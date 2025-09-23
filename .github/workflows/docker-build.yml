@@ -1,0 +1,157 @@
+name: Docker Build and Push
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        service: [backend, frontend, database]
+        
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Configurar Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login al Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extraer metadatos
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Cargar variables de versión
+      run: |
+        echo "SYSTEM_VERSION=$(grep '^SYSTEM_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+        echo "BACKEND_VERSION=$(grep '^BACKEND_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+        echo "FRONTEND_VERSION=$(grep '^FRONTEND_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+        echo "DATABASE_VERSION=$(grep '^DATABASE_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+        echo "NODE_VERSION=$(grep '^NODE_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+        echo "POSTGRES_VERSION=$(grep '^POSTGRES_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+        echo "NGINX_VERSION=$(grep '^NGINX_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+
+    - name: Construir y hacer push de imagen Docker
+      uses: docker/build-push-action@v5
+      with:
+        context: ./${{ matrix.service }}
+        file: ./${{ matrix.service }}/Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          NODE_VERSION=${{ env.NODE_VERSION }}
+          POSTGRES_VERSION=${{ env.POSTGRES_VERSION }}
+          NGINX_VERSION=${{ env.NGINX_VERSION }}
+          BACKEND_VERSION=${{ env.BACKEND_VERSION }}
+          FRONTEND_VERSION=${{ env.FRONTEND_VERSION }}
+          DATABASE_VERSION=${{ env.DATABASE_VERSION }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+    - name: Generar reporte de seguridad
+      uses: aquasecurity/trivy-action@master
+      if: matrix.service == 'backend'
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Subir reporte de seguridad
+      uses: github/codeql-action/upload-sarif@v2
+      if: matrix.service == 'backend'
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Login al Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Ejecutar Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL,HIGH'
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [build-and-push, security-scan]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Desplegar a staging
+      run: |
+        echo "Desplegando a entorno de staging..."
+        # Aquí irían los comandos para desplegar a staging
+        # Por ejemplo: kubectl, docker-compose, etc.
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [build-and-push, security-scan]
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: production
+
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Desplegar a producción
+      run: |
+        echo "Desplegando a entorno de producción..."
+        # Aquí irían los comandos para desplegar a producción
+        # Por ejemplo: kubectl, docker-compose, etc.

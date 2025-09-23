@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Configuración</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; }
+        .success { border-color: #4CAF50; background: #e8f5e8; }
+        .error { border-color: #f44336; background: #ffeaea; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Test de Configuración - ControlAcceso</h1>
+    
+    <button onclick="testConfig()">Probar Configuración</button>
+    <button onclick="testLogin()">Probar Login</button>
+    <button onclick="clearResults()">Limpiar</button>
+    
+    <div id="results"></div>
+
+    <script>
+        function addResult(title, content, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `
+                <h3>${title}</h3>
+                <pre>${typeof content === 'object' ? JSON.stringify(content, null, 2) : content}</pre>
+            `;
+            results.appendChild(div);
+        }
+
+        function testConfig() {
+            addResult('🌍 Información del Entorno', {
+                userAgent: navigator.userAgent,
+                location: window.location.href,
+                protocol: window.location.protocol,
+                host: window.location.host,
+                timestamp: new Date().toISOString(),
+                localStorage: Object.keys(localStorage),
+                sessionStorage: Object.keys(sessionStorage)
+            }, 'info');
+        }
+
+        async function testLogin() {
+            addResult('🔄 Probando Login Directo', 'Iniciando...', 'info');
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    addResult('✅ Login Exitoso', {
+                        success: data.success,
+                        message: data.message,
+                        user: data.user.username,
+                        token: data.token ? 'Token recibido' : 'Sin token'
+                    }, 'success');
+                } else {
+                    addResult('❌ Login Falló', data, 'error');
+                }
+            } catch (error) {
+                addResult('❌ Error en Login', {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                }, 'error');
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Mostrar información automáticamente
+        testConfig();
+    </script>
+</body>
+</html>

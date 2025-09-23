@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Test - ControlAcceso</title>
+</head>
+<body>
+    <h1>Simple Test - ControlAcceso</h1>
+    <div id="result"></div>
+    <button onclick="testFetch()">Probar Fetch</button>
+    <button onclick="testXHR()">Probar XHR</button>
+    
+    <script>
+        async function testFetch() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>🔍 Probando con fetch...</p>';
+            
+            try {
+                console.log('🔍 Iniciando test con fetch...');
+                const response = await fetch('http://localhost:3001/health', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Fetch exitoso:', data);
+                    resultDiv.innerHTML = `
+                        <p style="color: green;">✅ Fetch exitoso!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('❌ Error en fetch:', error);
+                resultDiv.innerHTML = `
+                    <p style="color: red;">❌ Error en fetch:</p>
+                    <p><strong>Mensaje:</strong> ${error.message}</p>
+                    <p><strong>Tipo:</strong> ${error.name}</p>
+                `;
+            }
+        }
+
+        function testXHR() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>🔍 Probando con XHR...</p>';
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', 'http://localhost:3001/health', true);
+            xhr.withCredentials = true;
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            console.log('✅ XHR exitoso:', data);
+                            resultDiv.innerHTML = `
+                                <p style="color: green;">✅ XHR exitoso!</p>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            `;
+                        } catch (e) {
+                            console.error('❌ Error parseando respuesta:', e);
+                            resultDiv.innerHTML = `
+                                <p style="color: red;">❌ Error parseando respuesta:</p>
+                                <p><strong>Mensaje:</strong> ${e.message}</p>
+                            `;
+                        }
+                    } else {
+                        console.error('❌ Error en XHR:', xhr.status, xhr.statusText);
+                        resultDiv.innerHTML = `
+                            <p style="color: red;">❌ Error en XHR:</p>
+                            <p><strong>Status:</strong> ${xhr.status}</p>
+                            <p><strong>Status Text:</strong> ${xhr.statusText}</p>
+                        `;
+                    }
+                }
+            };
+            
+            xhr.onerror = function() {
+                console.error('❌ Error de red en XHR');
+                resultDiv.innerHTML = `
+                    <p style="color: red;">❌ Error de red en XHR</p>
+                `;
+            };
+            
+            xhr.send();
+        }
+    </script>
+</body>
+</html>
+
+

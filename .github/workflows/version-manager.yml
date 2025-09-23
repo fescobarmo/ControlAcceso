@@ -1,0 +1,149 @@
+name: Version Manager
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      component:
+        description: 'Componente a actualizar'
+        required: true
+        default: 'system'
+        type: choice
+        options:
+        - system
+        - backend
+        - frontend
+        - database
+      version:
+        description: 'Nueva versión (ej: 1.2.3)'
+        required: true
+        type: string
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Configurar Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+    - name: Actualizar versión
+      run: |
+        # Actualizar el archivo VERSION
+        if [ "${{ github.event.inputs.component }}" = "system" ]; then
+          sed -i "s/SYSTEM_VERSION=.*/SYSTEM_VERSION=${{ github.event.inputs.version }}/" VERSION
+        elif [ "${{ github.event.inputs.component }}" = "backend" ]; then
+          sed -i "s/BACKEND_VERSION=.*/BACKEND_VERSION=${{ github.event.inputs.version }}/" VERSION
+        elif [ "${{ github.event.inputs.component }}" = "frontend" ]; then
+          sed -i "s/FRONTEND_VERSION=.*/FRONTEND_VERSION=${{ github.event.inputs.version }}/" VERSION
+        elif [ "${{ github.event.inputs.component }}" = "database" ]; then
+          sed -i "s/DATABASE_VERSION=.*/DATABASE_VERSION=${{ github.event.inputs.version }}/" VERSION
+        fi
+        
+        # Actualizar timestamp
+        sed -i "s/BUILD_DATE=.*/BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)/" VERSION
+        
+        # Actualizar commit hash
+        sed -i "s/GIT_COMMIT=.*/GIT_COMMIT=${{ github.sha }}/" VERSION
+
+    - name: Commit cambios
+      run: |
+        git add VERSION
+        git commit -m "chore: update ${{ github.event.inputs.component }} version to ${{ github.event.inputs.version }}"
+        git push
+
+  auto-version:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extraer versión del tag
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "Tag version: $VERSION"
+
+    - name: Configurar Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+    - name: Actualizar todas las versiones
+      run: |
+        # Actualizar versión del sistema
+        sed -i "s/SYSTEM_VERSION=.*/SYSTEM_VERSION=${{ env.VERSION }}/" VERSION
+        
+        # Actualizar timestamp
+        sed -i "s/BUILD_DATE=.*/BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)/" VERSION
+        
+        # Actualizar commit hash
+        sed -i "s/GIT_COMMIT=.*/GIT_COMMIT=${{ github.sha }}/" VERSION
+
+    - name: Commit cambios de versión
+      run: |
+        git add VERSION
+        git commit -m "chore: update system version to ${{ env.VERSION }}"
+        git push
+
+  create-release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: auto-version
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Extraer versión del tag
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+    - name: Generar changelog
+      run: |
+        # Generar changelog básico
+        echo "# ControlAcceso v${{ env.VERSION }}" > CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "## Cambios en esta versión" >> CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD~1)..HEAD >> CHANGELOG.md
+
+    - name: Crear release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: ControlAcceso v${{ env.VERSION }}
+        body_path: CHANGELOG.md
+        draft: false
+        prerelease: false
+
+  notify-teams:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [build-and-push, create-release]
+    
+    steps:
+    - name: Notificar a equipos
+      run: |
+        echo "Notificando a equipos sobre el despliegue..."
+        # Aquí podrías integrar con Slack, Teams, Discord, etc.
+        # curl -X POST -H 'Content-type: application/json' \
+        #   --data '{"text":"ControlAcceso v${{ env.VERSION }} desplegado exitosamente!"}' \
+        #   ${{ secrets.SLACK_WEBHOOK_URL }}

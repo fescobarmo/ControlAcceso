@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login - ControlAcceso</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.11.0/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Test de Login - ControlAcceso</h1>
+    <div id="result"></div>
+    <button onclick="testLogin()">Probar Login</button>
+    
+    <script>
+        // Configuración exacta del frontend
+        const api = axios.create({
+            baseURL: 'http://localhost:3001',
+            timeout: 30000,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            withCredentials: true,
+        });
+
+        // Interceptor para requests
+        api.interceptors.request.use(
+            (config) => {
+                console.log('🚀 Request:', config.method?.toUpperCase(), config.url);
+                console.log('📊 Base URL:', config.baseURL);
+                console.log('📦 Data:', config.data);
+                return config;
+            },
+            (error) => {
+                console.error('❌ Request Error:', error);
+                return Promise.reject(error);
+            }
+        );
+
+        // Interceptor para responses
+        api.interceptors.response.use(
+            (response) => {
+                console.log('✅ Response:', response.status, response.config.url);
+                return response;
+            },
+            (error) => {
+                console.error('❌ Response Error:', error.response?.status, error.response?.data);
+                console.error('❌ Error completo:', {
+                    message: error.message,
+                    code: error.code,
+                    response: error.response,
+                    request: error.request
+                });
+                return Promise.reject(error);
+            }
+        );
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>🔐 Probando login...</p>';
+            
+            try {
+                console.log('🔐 Iniciando prueba de login...');
+                console.log('📊 Configuración:', {
+                    baseURL: api.defaults.baseURL,
+                    timeout: api.defaults.timeout,
+                    withCredentials: api.defaults.withCredentials
+                });
+                
+                const response = await api.post('/api/auth/login-simple', { 
+                    username: 'admin', 
+                    password: 'admin123' 
+                });
+                
+                console.log('✅ Login exitoso:', response.data);
+                resultDiv.innerHTML = `
+                    <p style="color: green;">✅ Login exitoso!</p>
+                    <pre>${JSON.stringify(response.data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('❌ Error en login:', {
+                    message: error.message,
+                    code: error.code,
+                    response: error.response?.data,
+                    status: error.response?.status
+                });
+                resultDiv.innerHTML = `
+                    <p style="color: red;">❌ Error en login:</p>
+                    <p><strong>Mensaje:</strong> ${error.message}</p>
+                    <p><strong>Código:</strong> ${error.code || 'N/A'}</p>
+                    <p><strong>Status:</strong> ${error.response?.status || 'N/A'}</p>
+                    <pre>${JSON.stringify(error.response?.data || {}, null, 2)}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
+
+

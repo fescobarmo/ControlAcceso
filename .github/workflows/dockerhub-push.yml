@@ -1,0 +1,186 @@
+name: Docker Hub Push
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+env:
+  DOCKERHUB_NAMESPACE: tu-usuario  # Cambiar por tu namespace de Docker Hub
+  IMAGE_NAME: controlacceso
+
+jobs:
+  push-to-dockerhub:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Configurar Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login a Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Extraer metadatos
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Cargar variables de versión
+      run: |
+        echo "SYSTEM_VERSION=$(grep '^SYSTEM_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+        echo "BACKEND_VERSION=$(grep '^BACKEND_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+        echo "FRONTEND_VERSION=$(grep '^FRONTEND_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+        echo "DATABASE_VERSION=$(grep '^DATABASE_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+        echo "NODE_VERSION=$(grep '^NODE_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+        echo "POSTGRES_VERSION=$(grep '^POSTGRES_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+        echo "NGINX_VERSION=$(grep '^NGINX_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+
+    - name: Construir y hacer push de Backend
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        push: true
+        tags: |
+          ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-backend:latest
+          ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-backend:${{ env.BACKEND_VERSION }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          NODE_VERSION=${{ env.NODE_VERSION }}
+          BACKEND_VERSION=${{ env.BACKEND_VERSION }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+    - name: Construir y hacer push de Frontend
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        push: true
+        tags: |
+          ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-frontend:latest
+          ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-frontend:${{ env.FRONTEND_VERSION }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          NODE_VERSION=${{ env.NODE_VERSION }}
+          NGINX_VERSION=${{ env.NGINX_VERSION }}
+          FRONTEND_VERSION=${{ env.FRONTEND_VERSION }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+    - name: Construir y hacer push de Database
+      uses: docker/build-push-action@v5
+      with:
+        context: ./database
+        file: ./database/Dockerfile
+        push: true
+        tags: |
+          ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-database:latest
+          ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-database:${{ env.DATABASE_VERSION }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          POSTGRES_VERSION=${{ env.POSTGRES_VERSION }}
+          DATABASE_VERSION=${{ env.DATABASE_VERSION }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+    - name: Generar docker-compose para producción
+      run: |
+        cat > docker-compose.production.yml << EOF
+        # ControlAcceso - Docker Compose para producción
+        # Generado automáticamente el $(date)
+        # Versión del sistema: ${{ env.SYSTEM_VERSION }}
+
+        version: '3.8'
+
+        services:
+          database:
+            image: ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-database:${{ env.DATABASE_VERSION }}
+            container_name: controlacceso-db-prod
+            restart: always
+            environment:
+              POSTGRES_DB: \${DB_NAME}
+              POSTGRES_USER: \${DB_USER}
+              POSTGRES_PASSWORD: \${DB_PASSWORD}
+            volumes:
+              - postgres_data_prod:/var/lib/postgresql/data
+            ports:
+              - "127.0.0.1:\${DB_PORT:-5432}:5432"
+            networks:
+              - controlacceso-network-prod
+
+          backend:
+            image: ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-backend:${{ env.BACKEND_VERSION }}
+            container_name: controlacceso-backend-prod
+            restart: always
+            environment:
+              NODE_ENV: production
+              PORT: 3001
+              DB_HOST: database
+              DB_PORT: 5432
+              DB_NAME: \${DB_NAME}
+              DB_USER: \${DB_USER}
+              DB_PASSWORD: \${DB_PASSWORD}
+              JWT_SECRET: \${JWT_SECRET}
+            ports:
+              - "127.0.0.1:\${BACKEND_PORT:-3001}:3001"
+            networks:
+              - controlacceso-network-prod
+            depends_on:
+              - database
+
+          frontend:
+            image: ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-frontend:${{ env.FRONTEND_VERSION }}
+            container_name: controlacceso-frontend-prod
+            restart: always
+            environment:
+              REACT_APP_API_URL: \${REACT_APP_API_URL}
+            ports:
+              - "\${FRONTEND_PORT:-80}:80"
+            networks:
+              - controlacceso-network-prod
+            depends_on:
+              - backend
+
+        volumes:
+          postgres_data_prod:
+            driver: local
+
+        networks:
+          controlacceso-network-prod:
+            driver: bridge
+        EOF
+
+    - name: Subir docker-compose de producción
+      uses: actions/upload-artifact@v3
+      with:
+        name: docker-compose-production
+        path: docker-compose.production.yml
+
+    - name: Notificar despliegue exitoso
+      run: |
+        echo "✅ Imágenes Docker subidas exitosamente a Docker Hub"
+        echo "📦 Imágenes disponibles:"
+        echo "  - ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-backend:${{ env.BACKEND_VERSION }}"
+        echo "  - ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-frontend:${{ env.FRONTEND_VERSION }}"
+        echo "  - ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-database:${{ env.DATABASE_VERSION }}"
