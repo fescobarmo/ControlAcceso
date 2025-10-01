@@ -4,11 +4,12 @@
 
 1. [Error: Job depends on unknown job](#error-job-depends-on-unknown-job)
 2. [Error: Acciones Deprecadas](#error-acciones-deprecadas)
-3. [Errores Comunes de YAML](#errores-comunes-de-yaml)
-4. [Problemas con Matrix Strategy](#problemas-con-matrix-strategy)
-5. [Errores de Permisos](#errores-de-permisos)
-6. [Timeout y Límites](#timeout-y-límites)
-7. [Cómo Debuggear Workflows](#cómo-debuggear-workflows)
+3. [Error: Nombre de Imagen Docker con Mayúsculas](#error-nombre-de-imagen-docker-con-mayúsculas)
+4. [Errores Comunes de YAML](#errores-comunes-de-yaml)
+5. [Problemas con Matrix Strategy](#problemas-con-matrix-strategy)
+6. [Errores de Permisos](#errores-de-permisos)
+7. [Timeout y Límites](#timeout-y-límites)
+8. [Cómo Debuggear Workflows](#cómo-debuggear-workflows)
 
 ---
 
@@ -491,6 +492,151 @@ En el proyecto ControlAcceso corregimos:
    # Después
    needs: [create-release]  # Solo dependencias existentes
    ```
+
+---
+
+## Error: Nombre de Imagen Docker con Mayúsculas
+
+### ❌ Error Reportado
+
+```
+FATAL	Fatal error	
+run error: image scan error: scan error: unable to initialize a scan service: 
+unable to initialize an image scan service: failed to parse the image name: 
+could not parse reference: ghcr.io/usuario/NombreConMayusculas-backend:tag
+
+Error: Process completed with exit code 1.
+```
+
+### 🔍 Causa Raíz
+
+**Los nombres de imágenes Docker deben estar completamente en minúsculas** según la especificación OCI (Open Container Initiative).
+
+**Problema común:**
+```yaml
+env:
+  IMAGE_NAME: ${{ github.repository }}  # Puede contener mayúsculas
+  
+# Resultado:
+# ghcr.io/usuario/MiRepositorio-backend:tag
+#                 ^^ MAYÚSCULAS - ❌ RECHAZADO
+```
+
+### ✅ Solución
+
+#### Opción 1: Usar nombre fijo en minúsculas (Recomendado)
+
+```yaml
+# ✅ CORRECTO
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/mi-aplicacion
+  
+# Resultado:
+# ghcr.io/usuario/mi-aplicacion-backend:tag  ✅
+```
+
+#### Opción 2: Convertir dinámicamente a minúsculas
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set lowercase image name
+        id: image-name
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "name=$REPO_LOWER" >> $GITHUB_OUTPUT
+      
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          tags: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.name }}:${{ github.sha }}
+```
+
+### 🎯 Reglas de Nomenclatura Docker
+
+| Permitido | No Permitido |
+|-----------|--------------|
+| ✅ Minúsculas (a-z) | ❌ Mayúsculas (A-Z) |
+| ✅ Números (0-9) | ❌ Espacios |
+| ✅ Guiones (-) | ❌ Caracteres especiales (@, #, $, etc.) |
+| ✅ Guiones bajos (_) | ❌ Puntos al inicio/final |
+| ✅ Puntos (.) como separadores | |
+
+### 📝 Ejemplos
+
+```yaml
+# ❌ INCORRECTO
+ghcr.io/usuario/MiApp:latest           # Mayúsculas
+ghcr.io/usuario/mi app:latest          # Espacios
+ghcr.io/usuario/mi@app:latest          # Caracter especial
+ghcr.io/Usuario/mi-app:latest          # Mayúscula en namespace
+
+# ✅ CORRECTO
+ghcr.io/usuario/mi-app:latest          # Todo minúsculas
+ghcr.io/usuario/mi_app:latest          # Guión bajo OK
+ghcr.io/usuario/mi.app:latest          # Punto OK
+ghcr.io/usuario/mi-app-v2:1.0.0        # Números y guiones OK
+```
+
+### 🔍 Cómo Detectar Este Error
+
+1. **Revisar logs de GitHub Actions:**
+   ```
+   could not parse reference: ghcr.io/...
+   ```
+
+2. **Verificar nombre de repositorio:**
+   - Ve a tu repositorio en GitHub
+   - Si el nombre tiene mayúsculas, el `${{ github.repository }}` las incluirá
+
+3. **Test local:**
+   ```bash
+   # Intenta construir con el nombre que usas en el workflow
+   docker build -t ghcr.io/usuario/MiApp:test .
+   # Si falla, el nombre tiene problemas
+   ```
+
+### ✅ Verificación Post-Fix
+
+```bash
+# 1. Verificar que el workflow use minúsculas
+grep -n "IMAGE_NAME" .github/workflows/*.yml
+
+# 2. Test local
+docker build -t ghcr.io/usuario/mi-app:test ./backend
+docker images | grep mi-app
+
+# 3. Verificar en GHCR (después del push)
+# https://github.com/usuario?tab=packages
+# Todas las imágenes deben aparecer en minúsculas
+```
+
+### 📚 Referencias
+
+- [Docker Image Specification](https://docs.docker.com/engine/reference/commandline/tag/)
+- [OCI Distribution Spec](https://github.com/opencontainers/distribution-spec)
+- [GHCR Documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
+
+### 🔧 Fix Aplicado en ControlAcceso
+
+```yaml
+# .github/workflows/docker-build.yml
+
+# ANTES ❌
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}  # fescobarmo/ControlAcceso
+
+# DESPUÉS ✅
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/controlacceso  # fescobarmo/controlacceso
+```
+
+**Documentación completa:** Ver `FIX_DOCKER_IMAGE_NAME_ERROR.md`
 
 ---
 
