@@ -42,3 +42,4 @@ INSERT INTO residentes (nombre, apellido_paterno, apellido_materno, tipo_documen
 ('Carlos', 'López', 'Martínez', 'RUN', '11223344-5', '1988-11-08', '+56911223344', 'carlos.lopez@email.com', 'Av. Principal 123', '103', 'Departamento', '2019-08-20', 'activo', 'propietario', 1);
 
 COMMIT;
+

@@ -184,3 +184,4 @@ jobs:
         echo "  - ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-backend:${{ env.BACKEND_VERSION }}"
         echo "  - ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-frontend:${{ env.FRONTEND_VERSION }}"
         echo "  - ${{ env.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}-database:${{ env.DATABASE_VERSION }}"
+

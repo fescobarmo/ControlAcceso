@@ -270,3 +270,4 @@ docker login --username fescobarmo
 - ✅ **Scripts de mantenimiento** incluidos
 
 **¡Tu aplicación ControlAcceso ahora puede ser compartida fácilmente a través de Docker Hub! 🌍**
+

@@ -7,7 +7,7 @@ const Profile = require('./Profile')(sequelize);
 const Visita = require('./Visita')(sequelize);
 const VisitaExterna = require('./VisitaExterna')(sequelize);
 const Residente = require('./Residente');
-const Persona = require('./Persona');
+// const Persona = require('./Persona'); // No se usa, se usa Residente en su lugar
 const AccessLog = require('./AccessLog')(sequelize);
 const Area = require('./Area')(sequelize);
 const Device = require('./Device')(sequelize);
@@ -42,11 +42,11 @@ User.hasMany(Residente, { foreignKey: 'created_by', as: 'residentes_creados' });
 User.hasMany(Residente, { foreignKey: 'updated_by', as: 'residentes_actualizados' });
 
 // Asociaciones para personas (enrolamiento)
-Persona.belongsTo(User, { foreignKey: 'created_by', as: 'creador' });
-Persona.belongsTo(User, { foreignKey: 'updated_by', as: 'actualizador' });
+// Persona.belongsTo(User, { foreignKey: 'created_by', as: 'creador' });
+// Persona.belongsTo(User, { foreignKey: 'updated_by', as: 'actualizador' });
 
-User.hasMany(Persona, { foreignKey: 'created_by', as: 'personas_creadas' });
-User.hasMany(Persona, { foreignKey: 'updated_by', as: 'personas_actualizadas' });
+// User.hasMany(Persona, { foreignKey: 'created_by', as: 'personas_creadas' });
+// User.hasMany(Persona, { foreignKey: 'updated_by', as: 'personas_actualizadas' });
 
 // Asociaciones para AccessLog
 AccessLog.belongsTo(User, { foreignKey: 'usuario_id', as: 'user' });
@@ -70,7 +70,7 @@ module.exports = {
   Visita,
   VisitaExterna,
   Residente,
-  Persona,
+  // Persona, // No se usa, se usa Residente en su lugar
   AccessLog,
   Area,
   Device,

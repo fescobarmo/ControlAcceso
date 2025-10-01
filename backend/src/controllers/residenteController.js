@@ -292,6 +292,9 @@ const updateResidente = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
+    
+    
+    
 
     // Buscar el residente
     const residente = await Residente.findByPk(id);
@@ -300,6 +303,45 @@ const updateResidente = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Residente no encontrado'
+      });
+    }
+
+    // Limpiar campos vacíos ANTES de validar campos obligatorios
+    const camposParaLimpiar = ['email', 'telefono', 'apellido_materno', 'fecha_nacimiento', 'fecha_ingreso', 'observaciones', 'numero_residencia'];
+    
+    camposParaLimpiar.forEach(campo => {
+      if (updateData[campo] !== undefined) {
+        if (updateData[campo] && updateData[campo].toString().trim()) {
+          // Limpiar y formatear el campo
+          if (campo === 'email') {
+            updateData[campo] = updateData[campo].trim().toLowerCase();
+          } else {
+            updateData[campo] = updateData[campo].toString().trim();
+          }
+        } else {
+          // Eliminar campo vacío para evitar validaciones
+          delete updateData[campo];
+        }
+      }
+    });
+
+    // Validar que todos los campos obligatorios estén presentes
+    const camposObligatorios = [
+      'nombre', 'apellido_paterno', 'apellido_materno', 'tipo_documento', 
+      'documento', 'fecha_nacimiento', 'telefono', 'email', 
+      'direccion_residencia', 'numero_residencia', 'tipo_residencia', 
+      'fecha_ingreso', 'estado', 'tipo_residente', 'observaciones'
+    ];
+    
+    const camposFaltantes = camposObligatorios.filter(campo => 
+      !updateData[campo] || updateData[campo].toString().trim() === ''
+    );
+    
+    if (camposFaltantes.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Todos los campos son obligatorios',
+        camposFaltantes: camposFaltantes
       });
     }
 
@@ -326,16 +368,17 @@ const updateResidente = async (req, res) => {
     if (updateData.apellido_materno) updateData.apellido_materno = updateData.apellido_materno.trim();
     if (updateData.documento) updateData.documento = updateData.documento.trim();
     if (updateData.telefono) updateData.telefono = updateData.telefono.trim();
-    if (updateData.email) updateData.email = updateData.email.trim().toLowerCase();
     if (updateData.direccion_residencia) updateData.direccion_residencia = updateData.direccion_residencia.trim();
-    if (updateData.numero_residencia) updateData.numero_residencia = updateData.numero_residencia.trim();
-    if (updateData.observaciones) updateData.observaciones = updateData.observaciones.trim();
+    
 
     // Agregar campo de auditoría
     updateData.updated_by = req.user?.id || null;
 
-    // Actualizar el residente
-    await residente.update(updateData);
+    // Actualizar el residente usando set() para evitar validaciones automáticas
+    Object.keys(updateData).forEach(key => {
+      residente.set(key, updateData[key]);
+    });
+    await residente.save();
 
     // Formatear respuesta
     const residenteActualizado = {

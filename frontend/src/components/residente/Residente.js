@@ -65,6 +65,7 @@ const Residente = () => {
   const [filterEstado, setFilterEstado] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [estadisticas, setEstadisticas] = useState({});
+  const [validationErrors, setValidationErrors] = useState({});
 
   // Estado del formulario
   const [formData, setFormData] = useState({
@@ -161,18 +162,229 @@ const Residente = () => {
     }
   };
 
+  const validateField = (fieldName, value) => {
+    const errors = { ...validationErrors };
+    
+    switch (fieldName) {
+      case 'nombre':
+        if (!value || value.trim() === '' || value.trim().length < 2) {
+          errors[fieldName] = 'El nombre es obligatorio (mín. 2 caracteres)';
+        } else {
+          delete errors[fieldName];
+        }
+        break;
+      case 'apellido_paterno':
+        if (!value || value.trim() === '' || value.trim().length < 2) {
+          errors[fieldName] = 'El apellido paterno es obligatorio (mín. 2 caracteres)';
+        } else {
+          delete errors[fieldName];
+        }
+        break;
+      case 'apellido_materno':
+        if (!value || value.trim() === '' || value.trim().length < 2) {
+          errors[fieldName] = 'El apellido materno es obligatorio (mín. 2 caracteres)';
+        } else {
+          delete errors[fieldName];
+        }
+        break;
+      case 'documento':
+        if (!value || value.trim() === '' || value.trim().length < 3) {
+          errors[fieldName] = 'El número de documento es obligatorio (mín. 3 caracteres)';
+        } else {
+          delete errors[fieldName];
+        }
+        break;
+      case 'fecha_nacimiento':
+        if (!value || value.trim() === '') {
+          errors[fieldName] = 'La fecha de nacimiento es obligatoria';
+        } else {
+          delete errors[fieldName];
+        }
+        break;
+      case 'telefono':
+        if (!value || value.trim() === '' || value.trim().length < 8) {
+          errors[fieldName] = 'El teléfono es obligatorio (mín. 8 caracteres)';
+        } else {
+          delete errors[fieldName];
+        }
+        break;
+      case 'email':
+        if (!value || value.trim() === '') {
+          errors[fieldName] = 'El email es obligatorio';
+        } else {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value.trim())) {
+            errors[fieldName] = 'El formato del email no es válido';
+          } else {
+            delete errors[fieldName];
+          }
+        }
+        break;
+      case 'direccion_residencia':
+        if (!value || value.trim() === '' || value.trim().length < 5) {
+          errors[fieldName] = 'La dirección es obligatoria (mín. 5 caracteres)';
+        } else {
+          delete errors[fieldName];
+        }
+        break;
+      case 'numero_residencia':
+        if (!value || value.trim() === '' || value.trim().length < 1) {
+          errors[fieldName] = 'El número de residencia es obligatorio';
+        } else {
+          delete errors[fieldName];
+        }
+        break;
+      case 'fecha_ingreso':
+        if (!value || value.trim() === '') {
+          errors[fieldName] = 'La fecha de ingreso es obligatoria';
+        } else {
+          delete errors[fieldName];
+        }
+        break;
+      case 'observaciones':
+        if (!value || value.trim() === '' || value.trim().length < 5) {
+          errors[fieldName] = 'Las observaciones son obligatorias (mín. 5 caracteres)';
+        } else {
+          delete errors[fieldName];
+        }
+        break;
+    }
+    
+    setValidationErrors(errors);
+  };
+
+  const validateForm = () => {
+    const errors = [];
+    
+    // Validar campos obligatorios con validación estricta
+    if (!formData.nombre || formData.nombre.trim() === '' || formData.nombre.trim().length < 2) {
+      errors.push('El nombre es obligatorio y debe tener al menos 2 caracteres');
+    }
+    
+    if (!formData.apellido_paterno || formData.apellido_paterno.trim() === '' || formData.apellido_paterno.trim().length < 2) {
+      errors.push('El apellido paterno es obligatorio y debe tener al menos 2 caracteres');
+    }
+    
+    if (!formData.apellido_materno || formData.apellido_materno.trim() === '' || formData.apellido_materno.trim().length < 2) {
+      errors.push('El apellido materno es obligatorio y debe tener al menos 2 caracteres');
+    }
+    
+    if (!formData.tipo_documento || formData.tipo_documento.trim() === '') {
+      errors.push('El tipo de documento es obligatorio');
+    }
+    
+    if (!formData.documento || formData.documento.trim() === '' || formData.documento.trim().length < 3) {
+      errors.push('El número de documento es obligatorio y debe tener al menos 3 caracteres');
+    }
+    
+    if (!formData.fecha_nacimiento || formData.fecha_nacimiento.trim() === '') {
+      errors.push('La fecha de nacimiento es obligatoria');
+    }
+    
+    if (!formData.telefono || formData.telefono.trim() === '' || formData.telefono.trim().length < 8) {
+      errors.push('El teléfono es obligatorio y debe tener al menos 8 caracteres');
+    }
+    
+    if (!formData.email || formData.email.trim() === '') {
+      errors.push('El email es obligatorio');
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        errors.push('El formato del email no es válido');
+      }
+    }
+    
+    if (!formData.direccion_residencia || formData.direccion_residencia.trim() === '' || formData.direccion_residencia.trim().length < 5) {
+      errors.push('La dirección de residencia es obligatoria y debe tener al menos 5 caracteres');
+    }
+    
+    if (!formData.numero_residencia || formData.numero_residencia.trim() === '' || formData.numero_residencia.trim().length < 1) {
+      errors.push('El número de residencia es obligatorio');
+    }
+    
+    if (!formData.tipo_residencia || formData.tipo_residencia.trim() === '') {
+      errors.push('El tipo de residencia es obligatorio');
+    }
+    
+    if (!formData.fecha_ingreso || formData.fecha_ingreso.trim() === '') {
+      errors.push('La fecha de ingreso es obligatoria');
+    }
+    
+    if (!formData.estado || formData.estado.trim() === '') {
+      errors.push('El estado es obligatorio');
+    }
+    
+    if (!formData.tipo_residente || formData.tipo_residente.trim() === '') {
+      errors.push('El tipo de residente es obligatorio');
+    }
+    
+    if (!formData.observaciones || formData.observaciones.trim() === '' || formData.observaciones.trim().length < 5) {
+      errors.push('Las observaciones son obligatorias y deben tener al menos 5 caracteres');
+    }
+    
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     
+    // Validar formulario antes de enviar
+    const validationErrors = validateForm();
+    console.log('🔍 [DEBUG] Errores de validación:', validationErrors);
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join('. '));
+      setSnackbar({
+        open: true,
+        message: `Por favor complete todos los campos obligatorios: ${validationErrors.join('. ')}`,
+        severity: 'error'
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Validación adicional: verificar que no hay campos vacíos
+    const camposObligatorios = [
+      'nombre', 'apellido_paterno', 'apellido_materno', 'tipo_documento', 
+      'documento', 'fecha_nacimiento', 'telefono', 'email', 
+      'direccion_residencia', 'numero_residencia', 'tipo_residencia', 
+      'fecha_ingreso', 'estado', 'tipo_residente', 'observaciones'
+    ];
+    
+    const camposVacios = camposObligatorios.filter(campo => {
+      const valor = formData[campo];
+      return !valor || valor.toString().trim() === '';
+    });
+    
+    if (camposVacios.length > 0) {
+      setError(`Los siguientes campos están vacíos: ${camposVacios.join(', ')}`);
+      setSnackbar({
+        open: true,
+        message: `Los siguientes campos están vacíos: ${camposVacios.join(', ')}`,
+        severity: 'error'
+      });
+      setLoading(false);
+      return;
+    }
+    
     try {
-      console.log('📝 Enviando datos del formulario:', formData);
+      // Todos los campos son obligatorios, enviar todos los datos
+      const datosParaEnviar = { ...formData };
+      
+      // Limpiar espacios en blanco pero mantener todos los campos
+      Object.keys(datosParaEnviar).forEach(key => {
+        if (datosParaEnviar[key] && typeof datosParaEnviar[key] === 'string') {
+          datosParaEnviar[key] = datosParaEnviar[key].trim();
+        }
+      });
+      
+      console.log('📝 Enviando datos del formulario:', datosParaEnviar);
       
       let response;
       if (editingResidente) {
         console.log('✏️ Actualizando residente existente:', editingResidente.id);
-        response = await api.put(`/api/residentes/${editingResidente.id}`, formData);
+        response = await api.put(`/api/residentes/${editingResidente.id}`, datosParaEnviar);
         console.log('✅ Respuesta de actualización:', response.data);
         setSnackbar({
           open: true,
@@ -181,7 +393,7 @@ const Residente = () => {
         });
       } else {
         console.log('➕ Creando nuevo residente...');
-        response = await api.post('/api/residentes', formData);
+        response = await api.post('/api/residentes', datosParaEnviar);
         console.log('✅ Respuesta de creación:', response.data);
         setSnackbar({
           open: true,
@@ -296,6 +508,7 @@ const Residente = () => {
   const handleCloseModal = () => {
     setOpenModal(false);
     resetForm();
+    setValidationErrors({});
   };
 
   const getEstadoColor = (estado) => {
@@ -660,6 +873,11 @@ const Residente = () => {
           </DialogTitle>
           <DialogContent>
             <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+              {/* Nota sobre campos obligatorios */}
+              <Alert severity="info" sx={{ mb: 3 }}>
+                Todos los campos son obligatorios y deben completarse antes de guardar.
+              </Alert>
+              
               <Grid container spacing={3}>
                 {/* Información Personal */}
                 <Grid item xs={12}>
@@ -671,39 +889,55 @@ const Residente = () => {
                 <Grid item xs={12} md={4}>
                   <TextField
                     fullWidth
-                    label="Nombre"
+                    label="Nombre *"
                     value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, nombre: e.target.value });
+                      validateField('nombre', e.target.value);
+                    }}
                     required
+                    error={!!validationErrors.nombre}
+                    helperText={validationErrors.nombre || ""}
                   />
                 </Grid>
                 
                 <Grid item xs={12} md={4}>
                   <TextField
                     fullWidth
-                    label="Apellido Paterno"
+                    label="Apellido Paterno *"
                     value={formData.apellido_paterno}
-                    onChange={(e) => setFormData({ ...formData, apellido_paterno: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, apellido_paterno: e.target.value });
+                      validateField('apellido_paterno', e.target.value);
+                    }}
                     required
+                    error={!!validationErrors.apellido_paterno}
+                    helperText={validationErrors.apellido_paterno || ""}
                   />
                 </Grid>
                 
                 <Grid item xs={12} md={4}>
                   <TextField
                     fullWidth
-                    label="Apellido Materno"
+                    label="Apellido Materno *"
                     value={formData.apellido_materno}
-                    onChange={(e) => setFormData({ ...formData, apellido_materno: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, apellido_materno: e.target.value });
+                      validateField('apellido_materno', e.target.value);
+                    }}
+                    required
+                    error={!!validationErrors.apellido_materno}
+                    helperText={validationErrors.apellido_materno || ""}
                   />
                 </Grid>
                 
                 <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Tipo de Documento</InputLabel>
+                  <FormControl fullWidth required error={!formData.tipo_documento}>
+                    <InputLabel>Tipo de Documento *</InputLabel>
                     <Select
                       value={formData.tipo_documento}
                       onChange={(e) => setFormData({ ...formData, tipo_documento: e.target.value })}
-                      label="Tipo de Documento"
+                      label="Tipo de Documento *"
                     >
                       <MenuItem value="RUN">RUN</MenuItem>
                       <MenuItem value="PASAPORTE">Pasaporte</MenuItem>
@@ -715,40 +949,60 @@ const Residente = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="Número de Documento"
+                    label="Número de Documento *"
                     value={formData.documento}
                     onChange={(e) => setFormData({ ...formData, documento: e.target.value })}
                     required
+                    error={!formData.documento || formData.documento.trim().length < 3}
+                    helperText={(!formData.documento || formData.documento.trim().length < 3) ? "El número de documento es obligatorio (mín. 3 caracteres)" : ""}
                   />
                 </Grid>
                 
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="Fecha de Nacimiento"
+                    label="Fecha de Nacimiento *"
                     type="date"
                     value={formData.fecha_nacimiento}
-                    onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, fecha_nacimiento: e.target.value });
+                      validateField('fecha_nacimiento', e.target.value);
+                    }}
                     InputLabelProps={{ shrink: true }}
+                    required
+                    error={!!validationErrors.fecha_nacimiento}
+                    helperText={validationErrors.fecha_nacimiento || ""}
                   />
                 </Grid>
                 
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="Teléfono"
+                    label="Teléfono *"
                     value={formData.telefono}
-                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, telefono: e.target.value });
+                      validateField('telefono', e.target.value);
+                    }}
+                    required
+                    error={!!validationErrors.telefono}
+                    helperText={validationErrors.telefono || ""}
                   />
                 </Grid>
                 
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
-                    label="Email"
+                    label="Email *"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, email: e.target.value });
+                      validateField('email', e.target.value);
+                    }}
+                    required
+                    error={!!validationErrors.email}
+                    helperText={validationErrors.email || ""}
                   />
                 </Grid>
 
@@ -762,30 +1016,34 @@ const Residente = () => {
                 <Grid item xs={12} md={8}>
                   <TextField
                     fullWidth
-                    label="Dirección de Residencia"
+                    label="Dirección de Residencia *"
                     value={formData.direccion_residencia}
                     onChange={(e) => setFormData({ ...formData, direccion_residencia: e.target.value })}
                     required
+                    error={!formData.direccion_residencia || formData.direccion_residencia.trim().length < 5}
+                    helperText={(!formData.direccion_residencia || formData.direccion_residencia.trim().length < 5) ? "La dirección es obligatoria (mín. 5 caracteres)" : ""}
                   />
                 </Grid>
                 
                 <Grid item xs={12} md={4}>
                   <TextField
                     fullWidth
-                    label="Número"
+                    label="Número de Residencia *"
                     value={formData.numero_residencia}
                     onChange={(e) => setFormData({ ...formData, numero_residencia: e.target.value })}
                     required
+                    error={!formData.numero_residencia || formData.numero_residencia.trim().length < 1}
+                    helperText={(!formData.numero_residencia || formData.numero_residencia.trim().length < 1) ? "El número de residencia es obligatorio" : ""}
                   />
                 </Grid>
                 
                 <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Tipo de Residencia</InputLabel>
+                  <FormControl fullWidth required error={!formData.tipo_residencia}>
+                    <InputLabel>Tipo de Residencia *</InputLabel>
                     <Select
                       value={formData.tipo_residencia}
                       onChange={(e) => setFormData({ ...formData, tipo_residencia: e.target.value })}
-                      label="Tipo de Residencia"
+                      label="Tipo de Residencia *"
                     >
                       <MenuItem value="departamento">Departamento</MenuItem>
                       <MenuItem value="casa">Casa</MenuItem>
@@ -798,21 +1056,24 @@ const Residente = () => {
                 <Grid item xs={12} md={6}>
                   <TextField
                     fullWidth
-                    label="Fecha de Ingreso"
+                    label="Fecha de Ingreso *"
                     type="date"
                     value={formData.fecha_ingreso}
                     onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
                     InputLabelProps={{ shrink: true }}
+                    required
+                    error={!formData.fecha_ingreso || formData.fecha_ingreso.trim() === ''}
+                    helperText={(!formData.fecha_ingreso || formData.fecha_ingreso.trim() === '') ? "La fecha de ingreso es obligatoria" : ""}
                   />
                 </Grid>
                 
                 <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Tipo de Residente</InputLabel>
+                  <FormControl fullWidth required error={!formData.tipo_residente}>
+                    <InputLabel>Tipo de Residente *</InputLabel>
                     <Select
                       value={formData.tipo_residente}
                       onChange={(e) => setFormData({ ...formData, tipo_residente: e.target.value })}
-                      label="Tipo de Residente"
+                      label="Tipo de Residente *"
                     >
                       <MenuItem value="propietario">Propietario</MenuItem>
                       <MenuItem value="arrendatario">Arrendatario</MenuItem>
@@ -823,12 +1084,12 @@ const Residente = () => {
                 </Grid>
                 
                 <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Estado</InputLabel>
+                  <FormControl fullWidth required error={!formData.estado}>
+                    <InputLabel>Estado *</InputLabel>
                     <Select
                       value={formData.estado}
                       onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-                      label="Estado"
+                      label="Estado *"
                     >
                       <MenuItem value="activo">Activo</MenuItem>
                       <MenuItem value="inactivo">Inactivo</MenuItem>
@@ -840,11 +1101,14 @@ const Residente = () => {
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
-                    label="Observaciones"
+                    label="Observaciones *"
                     multiline
                     rows={3}
                     value={formData.observaciones}
                     onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                    required
+                    error={!formData.observaciones || formData.observaciones.trim().length < 5}
+                    helperText={(!formData.observaciones || formData.observaciones.trim().length < 5) ? "Las observaciones son obligatorias (mín. 5 caracteres)" : ""}
                   />
                 </Grid>
               </Grid>

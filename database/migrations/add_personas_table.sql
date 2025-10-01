@@ -30,3 +30,4 @@ INSERT INTO personas (nombre, apellido, tipo_documento, numero_documento, estado
 ('Carlos Alberto', 'Martínez López', 'RUN', '11223344-5', 'pendiente', 1, 1),
 ('Ana Patricia', 'García Morales', 'PASAPORTE', 'AB123456', 'activo', 1, 1),
 ('Pedro Antonio', 'Fernández Torres', 'RUN', '55667788-0', 'inactivo', 1, 1);
+

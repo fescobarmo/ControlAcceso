@@ -216,3 +216,4 @@ docker-compose exec -T database psql -U postgres -d controlacceso < backup.sql
 - ✅ **Configuración** optimizada para producción
 
 **¡Listo para usar! 🚀**
+

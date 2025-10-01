@@ -59,6 +59,7 @@ const Enrolamiento = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [errorMessage, setErrorMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipoDocumento, setFilterTipoDocumento] = useState('');
   const [filterEstado, setFilterEstado] = useState('');
@@ -71,7 +72,7 @@ const Enrolamiento = () => {
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
-    tipoDocumento: '',
+    tipoDocumento: 'RUN', // Valor por defecto
     numeroDocumento: '',
     foto: null,
     fotoPreview: null,
@@ -88,7 +89,6 @@ const Enrolamiento = () => {
     { value: 'RUN', label: 'RUN' },
     { value: 'PASAPORTE', label: 'Pasaporte' },
     { value: 'DNI', label: 'DNI' },
-    { value: 'OTRO', label: 'Otro' },
   ];
 
   const [estadisticas, setEstadisticas] = useState({
@@ -102,6 +102,11 @@ const Enrolamiento = () => {
     cargarPersonas();
     fetchEstadisticas();
   }, []);
+
+  // Debug: Monitorear cambios en errorMessage
+  useEffect(() => {
+    console.log('🔍 errorMessage cambió:', errorMessage);
+  }, [errorMessage]);
 
   const fetchEstadisticas = async () => {
     try {
@@ -579,10 +584,47 @@ const Enrolamiento = () => {
   const validateForm = () => {
     const errors = [];
     
-    if (!formData.nombre.trim()) errors.push('El nombre es requerido');
-    if (!formData.apellido.trim()) errors.push('El apellido es requerido');
-    if (!formData.tipoDocumento) errors.push('El tipo de documento es requerido');
-    if (!formData.numeroDocumento.trim()) errors.push('El número de documento es requerido');
+    // Validar nombre
+    if (!formData.nombre || !formData.nombre.trim()) {
+      errors.push('El nombre es requerido');
+    } else if (formData.nombre.trim().length < 2) {
+      errors.push('El nombre debe tener al menos 2 caracteres');
+    } else if (formData.nombre.trim().length > 100) {
+      errors.push('El nombre no puede exceder 100 caracteres');
+    }
+    
+    // Validar apellido
+    if (!formData.apellido || !formData.apellido.trim()) {
+      errors.push('El apellido es requerido');
+    } else if (formData.apellido.trim().length < 2) {
+      errors.push('El apellido debe tener al menos 2 caracteres');
+    } else if (formData.apellido.trim().length > 100) {
+      errors.push('El apellido no puede exceder 100 caracteres');
+    }
+    
+    // Validar tipo de documento
+    if (!formData.tipoDocumento) {
+      errors.push('El tipo de documento es requerido');
+    } else if (!['RUN', 'PASAPORTE', 'DNI'].includes(formData.tipoDocumento)) {
+      errors.push('El tipo de documento debe ser RUN, PASAPORTE o DNI');
+    }
+    
+    // Validar número de documento
+    if (!formData.numeroDocumento || !formData.numeroDocumento.trim()) {
+      errors.push('El número de documento es requerido');
+    } else if (formData.numeroDocumento.trim().length < 3) {
+      errors.push('El número de documento debe tener al menos 3 caracteres');
+    } else if (formData.numeroDocumento.trim().length > 20) {
+      errors.push('El número de documento no puede exceder 20 caracteres');
+    }
+    
+    // Validaciones específicas por tipo de documento
+    if (formData.tipoDocumento === 'RUN' && formData.numeroDocumento) {
+      const runPattern = /^\d{7,8}[-]?\d{1,2}$/;
+      if (!runPattern.test(formData.numeroDocumento.trim())) {
+        errors.push('El formato del RUN no es válido (ejemplo: 12345678-9)');
+      }
+    }
     
     if (errors.length > 0) {
       mostrarSnackbar(errors.join(', '), 'error');
@@ -599,30 +641,115 @@ const Enrolamiento = () => {
     setSubmitting(true);
     
     try {
+      // Validar que los campos no estén vacíos después del trim
+      const nombre = formData.nombre?.trim();
+      const apellido = formData.apellido?.trim();
+      const tipoDocumento = formData.tipoDocumento;
+      const numeroDocumento = formData.numeroDocumento?.trim();
+
+      // Validación adicional antes de enviar
+      if (!nombre || !apellido || !tipoDocumento || !numeroDocumento) {
+        mostrarSnackbar('Todos los campos obligatorios deben estar completos', 'error');
+        setSubmitting(false);
+        return;
+      }
+
+      // Validación de longitud según el modelo de la base de datos
+      if (nombre.length < 2 || nombre.length > 100) {
+        mostrarSnackbar('El nombre debe tener entre 2 y 100 caracteres', 'error');
+        setSubmitting(false);
+        return;
+      }
+
+      if (apellido.length < 2 || apellido.length > 100) {
+        mostrarSnackbar('El apellido debe tener entre 2 y 100 caracteres', 'error');
+        setSubmitting(false);
+        return;
+      }
+
+      if (numeroDocumento.length < 3 || numeroDocumento.length > 20) {
+        mostrarSnackbar('El número de documento debe tener entre 3 y 20 caracteres', 'error');
+        setSubmitting(false);
+        return;
+      }
+
+      // Validar que el tipo de documento sea válido
+      if (!['RUN', 'PASAPORTE', 'DNI'].includes(tipoDocumento)) {
+        mostrarSnackbar('El tipo de documento debe ser RUN, PASAPORTE o DNI', 'error');
+        setSubmitting(false);
+        return;
+      }
+
+      // Preparar datos para el backend (mantener camelCase, el backend los mapeará)
+      const datosParaBackend = {
+        nombre: nombre,
+        apellido: apellido,
+        tipoDocumento: tipoDocumento,
+        numeroDocumento: numeroDocumento,
+        foto: formData.foto || null,
+        estado: 'activo',
+        observaciones: null
+      };
+
+      console.log('📤 Enviando datos al backend:', datosParaBackend);
+      console.log('🔍 formData original:', formData);
+      console.log('🔍 Validación de campos:');
+      console.log('  - nombre:', formData.nombre, 'trim:', nombre, 'length:', nombre.length);
+      console.log('  - apellido:', formData.apellido, 'trim:', apellido, 'length:', apellido.length);
+      console.log('  - tipoDocumento:', formData.tipoDocumento);
+      console.log('  - numeroDocumento:', formData.numeroDocumento, 'trim:', numeroDocumento, 'length:', numeroDocumento.length);
+      console.log('🔍 Verificación de campos obligatorios:');
+      console.log('  - nombre válido:', !!nombre);
+      console.log('  - apellido válido:', !!apellido);
+      console.log('  - tipoDocumento válido:', !!tipoDocumento);
+      console.log('  - numeroDocumento válido:', !!numeroDocumento);
+
       if (editingPerson) {
         // Actualizar persona existente
-        const response = await api.put(`/api/enrolamiento/personas/${editingPerson.id}`, formData);
+        const response = await api.put(`/api/enrolamiento/personas/${editingPerson.id}`, datosParaBackend);
         if (response.data.success) {
           const personasActualizadas = personas.map(p => 
             p.id === editingPerson.id ? response.data.data : p
           );
           setPersonas(personasActualizadas);
           mostrarSnackbar('Persona actualizada exitosamente', 'success');
+          cerrarDialog();
+          cargarPersonas();
+          fetchEstadisticas();
         }
       } else {
         // Crear nueva persona
-        const response = await api.post('/api/enrolamiento/personas', formData);
+        const response = await api.post('/api/enrolamiento/personas', datosParaBackend);
         if (response.data.success) {
           setPersonas(prev => [response.data.data, ...prev]);
           mostrarSnackbar('Persona registrada exitosamente', 'success');
+          cerrarDialog();
+          cargarPersonas();
+          fetchEstadisticas();
         }
       }
-      cerrarDialog();
-      cargarPersonas();
-      fetchEstadisticas();
     } catch (error) {
       console.error('Error al guardar persona:', error);
-      const message = error.response?.data?.message || 'Error al guardar persona';
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      
+      let message = 'Error al guardar persona';
+      
+      if (error.response?.data?.message) {
+        message = error.response.data.message;
+        console.log('🔍 Usando mensaje del backend:', message);
+      } else if (error.response?.data?.camposFaltantes) {
+        message = `Campos faltantes: ${error.response.data.camposFaltantes.join(', ')}`;
+      } else if (error.response?.status === 400) {
+        message = 'Datos inválidos. Verifique que todos los campos estén completos y tengan el formato correcto.';
+      } else if (error.response?.status === 409) {
+        message = error.response.data.message || 'Usuario ya registrado';
+        console.log('🔍 Error 409 - Mensaje:', message);
+      } else if (error.response?.status === 500) {
+        message = 'Error interno del servidor. Intente nuevamente.';
+      }
+      
+      console.log('🔍 Mostrando snackbar con mensaje:', message);
       mostrarSnackbar(message, 'error');
     } finally {
       setSubmitting(false);
@@ -665,7 +792,7 @@ const Enrolamiento = () => {
     setFormData({
       nombre: '',
       apellido: '',
-      tipoDocumento: '',
+      tipoDocumento: 'RUN', // Mantener valor por defecto
       numeroDocumento: '',
       foto: null,
       fotoPreview: null,
@@ -677,10 +804,11 @@ const Enrolamiento = () => {
     setDialogOpen(false);
     setEditingPerson(null);
     setModalMode('search'); // Resetear al modo búsqueda
+    setErrorMessage(''); // Limpiar mensaje de error
     setFormData({
       nombre: '',
       apellido: '',
-      tipoDocumento: '',
+      tipoDocumento: 'RUN', // Mantener valor por defecto
       numeroDocumento: '',
       foto: null,
       fotoPreview: null,
@@ -688,7 +816,17 @@ const Enrolamiento = () => {
   };
 
   const mostrarSnackbar = (message, severity = 'success') => {
+    console.log('🔍 mostrarSnackbar llamado:', { message, severity });
     setSnackbar({ open: true, message, severity });
+    
+    // Si es un error, también guardar el mensaje para mostrar en el modal
+    if (severity === 'error') {
+      console.log('🔍 Estableciendo errorMessage:', message);
+      setErrorMessage(message);
+    } else {
+      console.log('🔍 Limpiando errorMessage');
+      setErrorMessage(''); // Limpiar mensaje de error en caso de éxito
+    }
   };
 
   const personasFiltradas = personas.filter(persona =>
@@ -1090,11 +1228,10 @@ const Enrolamiento = () => {
         {/* Dialog para crear/editar persona */}
         <Dialog
           open={dialogOpen}
-          onClose={cerrarDialog}
+          onClose={submitting ? undefined : cerrarDialog}
           maxWidth="md"
           fullWidth
           disableEscapeKeyDown={submitting}
-          disableBackdropClick={submitting}
         >
           <DialogTitle>
             {editingPerson ? 'Editar Persona' : 'Nueva Persona'}
@@ -1104,7 +1241,7 @@ const Enrolamiento = () => {
             {!editingPerson && (
               <Box sx={{ mt: 2 }}>
                 {/* Opciones de modo */}
-                <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
                   <Button
                     variant={modalMode === 'search' ? 'contained' : 'outlined'}
                     size="small"
@@ -1129,6 +1266,34 @@ const Enrolamiento = () => {
                   >
                     Ingreso Manual
                   </Button>
+                  
+                  {/* Leyenda del mensaje de error */}
+                  {(() => {
+                    console.log('🔍 Renderizando leyenda - errorMessage:', errorMessage);
+                    return errorMessage && (
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        ml: 2,
+                        p: 1,
+                        bgcolor: 'error.light',
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'error.main'
+                      }}>
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            color: 'error.main',
+                            fontWeight: 'bold',
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          ⚠️ {errorMessage}
+                        </Typography>
+                      </Box>
+                    );
+                  })()}
                 </Box>
                 
                 {/* Indicador del modo activo */}
@@ -1311,7 +1476,18 @@ const Enrolamiento = () => {
                           onChange={handleInputChange}
                           required
                           disabled={submitting}
-                          helperText={modalMode === 'search' ? 'Se llena automáticamente con el lector' : 'Mínimo 2 caracteres'}
+                          inputProps={{
+                            maxLength: 100,
+                            minLength: 2
+                          }}
+                          error={formData.nombre && (formData.nombre.trim().length < 2 || formData.nombre.trim().length > 100)}
+                          helperText={
+                            modalMode === 'search' 
+                              ? 'Se llena automáticamente con el lector' 
+                              : formData.nombre && (formData.nombre.trim().length < 2 || formData.nombre.trim().length > 100)
+                                ? 'El nombre debe tener entre 2 y 100 caracteres'
+                                : 'Mínimo 2 caracteres, máximo 100'
+                          }
                           sx={{
                             '& .MuiOutlinedInput-root': {
                               bgcolor: modalMode === 'search' ? 'action.hover' : 'transparent'
@@ -1328,7 +1504,18 @@ const Enrolamiento = () => {
                           onChange={handleInputChange}
                           required
                           disabled={submitting}
-                          helperText={modalMode === 'search' ? 'Se llena automáticamente con el lector' : 'Mínimo 2 caracteres'}
+                          inputProps={{
+                            maxLength: 100,
+                            minLength: 2
+                          }}
+                          error={formData.apellido && (formData.apellido.trim().length < 2 || formData.apellido.trim().length > 100)}
+                          helperText={
+                            modalMode === 'search' 
+                              ? 'Se llena automáticamente con el lector' 
+                              : formData.apellido && (formData.apellido.trim().length < 2 || formData.apellido.trim().length > 100)
+                                ? 'El apellido debe tener entre 2 y 100 caracteres'
+                                : 'Mínimo 2 caracteres, máximo 100'
+                          }
                           sx={{
                             '& .MuiOutlinedInput-root': {
                               bgcolor: modalMode === 'search' ? 'action.hover' : 'transparent'
@@ -1363,7 +1550,20 @@ const Enrolamiento = () => {
                           onChange={handleInputChange}
                           required
                           disabled={submitting}
-                          helperText={modalMode === 'search' ? 'Se llena automáticamente con el lector' : 'Mínimo 3 caracteres'}
+                          inputProps={{
+                            maxLength: 20,
+                            minLength: 3
+                          }}
+                          error={formData.numeroDocumento && (formData.numeroDocumento.trim().length < 3 || formData.numeroDocumento.trim().length > 20)}
+                          helperText={
+                            modalMode === 'search' 
+                              ? 'Se llena automáticamente con el lector' 
+                              : formData.numeroDocumento && (formData.numeroDocumento.trim().length < 3 || formData.numeroDocumento.trim().length > 20)
+                                ? 'El número de documento debe tener entre 3 y 20 caracteres'
+                                : formData.tipoDocumento === 'RUN' 
+                                  ? 'Formato: 12345678-9 (mínimo 3 caracteres)'
+                                  : 'Mínimo 3 caracteres, máximo 20'
+                          }
                           sx={{
                             '& .MuiOutlinedInput-root': {
                               bgcolor: modalMode === 'search' ? 'action.hover' : 'transparent'
@@ -1402,11 +1602,23 @@ const Enrolamiento = () => {
           open={snackbar.open}
           autoHideDuration={6000}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          sx={{ 
+            zIndex: 9999,
+            '& .MuiSnackbar-root': {
+              zIndex: 9999
+            }
+          }}
         >
           <Alert
             onClose={() => setSnackbar({ ...snackbar, open: false })}
             severity={snackbar.severity}
-            sx={{ width: '100%' }}
+            sx={{ 
+              width: '100%',
+              zIndex: 9999,
+              fontSize: '1rem',
+              fontWeight: 'bold'
+            }}
           >
             {snackbar.message}
           </Alert>

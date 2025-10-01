@@ -54,43 +54,31 @@ const Residente = sequelize.define('Residente', {
   },
   email: {
     type: DataTypes.STRING(150),
-    allowNull: true,
-    validate: {
-      isEmail: true,
-      len: [0, 150]
-    }
+    allowNull: true
   },
   direccion_residencia: {
-    type: DataTypes.STRING(200),
-    allowNull: false,
-    validate: {
-      len: [5, 200]
-    }
+    type: DataTypes.TEXT,
+    allowNull: true
   },
   numero_residencia: {
     type: DataTypes.STRING(20),
-    allowNull: false,
-    validate: {
-      len: [1, 20]
-    }
+    allowNull: true
   },
   tipo_residencia: {
-    type: DataTypes.ENUM('departamento', 'casa', 'oficina', 'local'),
-    allowNull: false,
-    defaultValue: 'departamento'
+    type: DataTypes.STRING(50),
+    allowNull: true
   },
   fecha_ingreso: {
     type: DataTypes.DATEONLY,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
+    allowNull: true
   },
   estado: {
-    type: DataTypes.ENUM('activo', 'inactivo', 'pendiente'),
+    type: DataTypes.ENUM('activo', 'inactivo', 'suspendido', 'pendiente'),
     allowNull: false,
     defaultValue: 'activo'
   },
   tipo_residente: {
-    type: DataTypes.ENUM('propietario', 'arrendatario', 'familiar', 'invitado'),
+    type: DataTypes.ENUM('propietario', 'arrendatario', 'invitado', 'familiar'),
     allowNull: false,
     defaultValue: 'propietario'
   },
@@ -163,9 +151,19 @@ Residente.beforeValidate((residente) => {
   if (residente.apellido_materno) residente.apellido_materno = residente.apellido_materno.trim();
   if (residente.documento) residente.documento = residente.documento.trim();
   if (residente.telefono) residente.telefono = residente.telefono.trim();
-  if (residente.email) residente.email = residente.email.trim().toLowerCase();
+  if (residente.email && residente.email.trim()) {
+    residente.email = residente.email.trim().toLowerCase();
+  } else if (residente.email !== undefined) {
+    residente.email = null;
+  }
   if (residente.direccion_residencia) residente.direccion_residencia = residente.direccion_residencia.trim();
-  if (residente.numero_residencia) residente.numero_residencia = residente.numero_residencia.trim();
+  if (residente.numero_residencia !== undefined && residente.numero_residencia !== null) {
+    residente.numero_residencia = residente.numero_residencia.trim();
+    // Si después del trim está vacío, convertir a null
+    if (residente.numero_residencia === '') {
+      residente.numero_residencia = null;
+    }
+  }
 });
 
 // Métodos de instancia

@@ -15,7 +15,7 @@ const getVisitas = async (req, res) => {
       whereClause = {
         [Op.or]: [
           { nombre: { [Op.iLike]: `%${search}%` } },
-          { apellido: { [Op.iLike]: `%${search}%` } },
+          { apellido_paterno: { [Op.iLike]: `%${search}%` } },
           { documento: { [Op.iLike]: `%${search}%` } },
           { departamento: { [Op.iLike]: `%${search}%` } }
         ]
@@ -96,7 +96,6 @@ const createVisita = async (req, res) => {
   try {
     const {
       nombre,
-      apellido,
       apellido_paterno,
       apellido_materno,
       tipo_documento,
@@ -117,7 +116,6 @@ const createVisita = async (req, res) => {
     // Crear la visita
     const visita = await Visita.create({
       nombre,
-      apellido,
       apellido_paterno,
       apellido_materno,
       tipo_documento: tipo_documento || 'RUN',

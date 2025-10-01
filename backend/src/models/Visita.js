@@ -11,13 +11,9 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: false
     },
-    apellido: {
-      type: DataTypes.STRING(100),
-      allowNull: false
-    },
     apellido_paterno: {
       type: DataTypes.STRING(100),
-      allowNull: true
+      allowNull: false
     },
     apellido_materno: {
       type: DataTypes.STRING(100),

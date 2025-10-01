@@ -25,3 +25,4 @@ GIT_COMMIT=initial
 
 # Entorno de despliegue
 ENVIRONMENT=development
+

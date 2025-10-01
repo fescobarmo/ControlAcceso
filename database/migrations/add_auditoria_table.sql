@@ -25,3 +25,4 @@ INSERT INTO auditoria (usuario_id, accion, timestamp) VALUES
 (1, 'Usuario creó nueva persona', CURRENT_TIMESTAMP - INTERVAL '8 hours'),
 (1, 'Usuario actualizó residente', CURRENT_TIMESTAMP - INTERVAL '9 hours'),
 (1, 'Usuario cerró sesión', CURRENT_TIMESTAMP - INTERVAL '10 hours');
+

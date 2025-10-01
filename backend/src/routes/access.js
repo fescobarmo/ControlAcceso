@@ -6,6 +6,7 @@ const router = express.Router();
 // Rutas de control de acceso
 router.get('/', accessController.getAllAccess);
 router.get('/heatmap', accessController.getHeatmapData);
+router.get('/dashboard-stats', accessController.getDashboardStats);
 router.get('/:id', accessController.getAccessById);
 router.post('/', accessController.createAccess);
 router.put('/:id', accessController.updateAccess);

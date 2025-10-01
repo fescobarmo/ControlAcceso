@@ -1,4 +1,4 @@
-const { AccessLog, User, Area } = require('../models');
+const { AccessLog, User, Area, Residente, Visita, VisitaExterna } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database').sequelize;
 
@@ -285,6 +285,134 @@ const accessController = {
         success: false,
         message: 'Error interno del servidor',
         error: error.message
+      });
+    }
+  },
+
+  // Obtener estadísticas generales del dashboard
+  async getDashboardStats(req, res) {
+    try {
+      console.log('📊 Obteniendo estadísticas del dashboard...');
+      
+      // Obtener estadísticas básicas de forma segura
+      const estadisticas = {
+        totalUsuarios: 0,
+        totalAccesos: 0,
+        totalVisitas: 0,
+        visitasActivas: 0,
+        accesosHoy: 0,
+        accesosAyer: 0,
+        cambioAccesosHoy: 0,
+        cambioAccesosSemana: 0,
+        accesosSemanaPasada: 0
+      };
+
+      try {
+        // Solo contar residentes ya que la tabla personas no existe
+        const totalResidentes = await Residente.count();
+        estadisticas.totalUsuarios = totalResidentes;
+        console.log('✅ Total usuarios (residentes):', estadisticas.totalUsuarios);
+      } catch (err) {
+        console.warn('⚠️ Error obteniendo usuarios:', err.message);
+      }
+
+      try {
+        estadisticas.totalAccesos = await AccessLog.count();
+        console.log('✅ Total accesos:', estadisticas.totalAccesos);
+      } catch (err) {
+        console.warn('⚠️ Error obteniendo total de accesos:', err.message);
+      }
+
+      try {
+        estadisticas.totalVisitas = await Visita.count();
+        console.log('✅ Total visitas:', estadisticas.totalVisitas);
+      } catch (err) {
+        console.warn('⚠️ Error obteniendo total de visitas:', err.message);
+      }
+
+      try {
+        estadisticas.visitasActivas = await Visita.count({
+          where: {
+            estado: 'ingreso'
+          }
+        });
+        console.log('✅ Visitas activas:', estadisticas.visitasActivas);
+      } catch (err) {
+        console.warn('⚠️ Error obteniendo visitas activas:', err.message);
+      }
+
+      // Calcular fechas para comparaciones
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      const ayer = new Date(hoy);
+      ayer.setDate(ayer.getDate() - 1);
+      const semanaPasada = new Date(hoy);
+      semanaPasada.setDate(semanaPasada.getDate() - 7);
+
+      try {
+        estadisticas.accesosHoy = await AccessLog.count({
+          where: {
+            timestamp: {
+              [Op.gte]: hoy
+            }
+          }
+        });
+        console.log('✅ Accesos hoy:', estadisticas.accesosHoy);
+      } catch (err) {
+        console.warn('⚠️ Error obteniendo accesos de hoy:', err.message);
+      }
+
+      try {
+        estadisticas.accesosAyer = await AccessLog.count({
+          where: {
+            timestamp: {
+              [Op.gte]: ayer,
+              [Op.lt]: hoy
+            }
+          }
+        });
+        console.log('✅ Accesos ayer:', estadisticas.accesosAyer);
+      } catch (err) {
+        console.warn('⚠️ Error obteniendo accesos de ayer:', err.message);
+      }
+
+      try {
+        estadisticas.accesosSemanaPasada = await AccessLog.count({
+          where: {
+            timestamp: {
+              [Op.gte]: semanaPasada,
+              [Op.lt]: hoy
+            }
+          }
+        });
+        console.log('✅ Accesos semana pasada:', estadisticas.accesosSemanaPasada);
+      } catch (err) {
+        console.warn('⚠️ Error obteniendo accesos de la semana pasada:', err.message);
+      }
+
+      // Calcular cambios porcentuales de forma segura
+      if (estadisticas.accesosAyer > 0) {
+        estadisticas.cambioAccesosHoy = parseFloat(((estadisticas.accesosHoy - estadisticas.accesosAyer) / estadisticas.accesosAyer * 100).toFixed(1));
+      }
+
+      if (estadisticas.accesosSemanaPasada > 0) {
+        estadisticas.cambioAccesosSemana = parseFloat(((estadisticas.accesosHoy - estadisticas.accesosSemanaPasada) / estadisticas.accesosSemanaPasada * 100).toFixed(1));
+      }
+
+      console.log('✅ Estadísticas del dashboard obtenidas:', estadisticas);
+
+      res.json({
+        success: true,
+        data: estadisticas
+      });
+
+    } catch (error) {
+      console.error('❌ Error obteniendo estadísticas del dashboard:', error);
+      console.error('❌ Stack trace:', error.stack);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Error interno'
       });
     }
   }

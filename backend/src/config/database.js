@@ -50,8 +50,9 @@ const syncDatabase = async (force = false) => {
       await sequelize.sync({ force: true });
       console.log('🔄 Base de datos sincronizada (force: true)');
     } else {
-      await sequelize.sync({ alter: true });
-      console.log('🔄 Base de datos sincronizada (alter: true)');
+      // Solo crear tablas si no existen, no alterar las existentes
+      await sequelize.sync({ alter: false });
+      console.log('🔄 Base de datos sincronizada (alter: false)');
     }
     return true;
   } catch (error) {
