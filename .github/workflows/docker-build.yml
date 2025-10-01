@@ -42,6 +42,8 @@ jobs:
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
         platforms: linux/amd64
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
   build-frontend:
     runs-on: ubuntu-latest
@@ -73,6 +75,8 @@ jobs:
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
         platforms: linux/amd64
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
   build-database:
     runs-on: ubuntu-latest
@@ -104,3 +108,147 @@ jobs:
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-database:latest
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-database:${{ github.sha }}
         platforms: linux/amd64
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Security Scan - Escanear vulnerabilidades en las imágenes
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend, build-database]
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Login a GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Escanear Backend con Trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-backend.sarif'
+      continue-on-error: true
+
+    - name: Subir reporte Backend a GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-backend.sarif'
+        category: 'backend'
+      continue-on-error: true
+
+    - name: Escanear Frontend con Trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-frontend.sarif'
+      continue-on-error: true
+
+    - name: Subir reporte Frontend a GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-frontend.sarif'
+        category: 'frontend'
+      continue-on-error: true
+
+    - name: Escanear Database con Trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-database:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-database.sarif'
+      continue-on-error: true
+
+    - name: Subir reporte Database a GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-database.sarif'
+        category: 'database'
+      continue-on-error: true
+
+  # Deploy a Staging - Cuando se hace push a develop
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend, build-database]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: 
+      name: staging
+      url: https://staging.controlacceso.example.com
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Configurar SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "# Configuración SSH para staging" >> ~/.ssh/config
+        # Aquí irían las configuraciones SSH reales
+        echo "Configuración SSH lista"
+
+    - name: Desplegar a Staging
+      run: |
+        echo "🚀 Desplegando a Staging..."
+        echo "Registry: ${{ env.REGISTRY }}"
+        echo "Backend Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}"
+        echo "Frontend Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}"
+        echo "Database Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-database:${{ github.sha }}"
+        
+        # Aquí irían los comandos reales de deploy, por ejemplo:
+        # ssh staging "cd /app && docker-compose pull && docker-compose up -d"
+        # O kubectl apply -f k8s/staging/
+        
+        echo "✅ Deploy a Staging completado"
+
+  # Deploy a Producción - Cuando se crea un tag v*
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend, build-database, security-scan]
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: 
+      name: production
+      url: https://controlacceso.example.com
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Configurar SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "# Configuración SSH para producción" >> ~/.ssh/config
+        # Aquí irían las configuraciones SSH reales
+        echo "Configuración SSH lista"
+
+    - name: Desplegar a Producción
+      run: |
+        echo "🚀 Desplegando a Producción..."
+        echo "Registry: ${{ env.REGISTRY }}"
+        echo "Backend Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}"
+        echo "Frontend Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}"
+        echo "Database Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-database:${{ github.sha }}"
+        
+        # Aquí irían los comandos reales de deploy, por ejemplo:
+        # ssh production "cd /app && docker-compose pull && docker-compose up -d"
+        # O kubectl apply -f k8s/production/
+        
+        echo "✅ Deploy a Producción completado"
+
+    - name: Crear notificación de deploy
+      run: |
+        echo "📢 Notificando deploy exitoso..."
+        # Aquí podrías enviar notificaciones a Slack, email, etc.
+        echo "Tag: ${{ github.ref_name }}"
+        echo "Commit: ${{ github.sha }}"
+        echo "Actor: ${{ github.actor }}"
