@@ -67,7 +67,7 @@ jobs:
           BACKEND_VERSION=${{ env.BACKEND_VERSION }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
 
     - name: Construir y hacer push de Frontend
       uses: docker/build-push-action@v5
@@ -85,7 +85,7 @@ jobs:
           FRONTEND_VERSION=${{ env.FRONTEND_VERSION }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
 
     - name: Construir y hacer push de Database
       uses: docker/build-push-action@v5
@@ -102,7 +102,7 @@ jobs:
           DATABASE_VERSION=${{ env.DATABASE_VERSION }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
 
     - name: Generar docker-compose para producción
       run: |
