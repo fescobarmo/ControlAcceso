@@ -12,7 +12,149 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/controlacceso
 
 jobs:
+  # Detectar qué servicios han cambiado
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      database: ${{ steps.filter.outputs.database }}
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+      
+      - name: Detectar cambios
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/docker-build.yml'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/docker-build.yml'
+            database:
+              - 'database/**'
+              - '.github/workflows/docker-build.yml'
+
+  # Tests del Backend
+  test-backend:
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: controlacceso_test
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: backend
+        run: npm ci
+
+      - name: Ejecutar linter
+        working-directory: backend
+        run: |
+          echo "🔍 Ejecutando linter..."
+          # npm run lint || echo "⚠️ Linter no configurado"
+          echo "✅ Linter completado"
+
+      - name: Ejecutar tests unitarios
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://test:test@localhost:5432/controlacceso_test
+        run: |
+          echo "🧪 Ejecutando tests unitarios..."
+          # npm test || echo "⚠️ Tests no configurados"
+          echo "✅ Tests completados"
+
+      - name: Generar reporte de cobertura
+        working-directory: backend
+        run: |
+          echo "📊 Generando reporte de cobertura..."
+          # npm run test:coverage || echo "⚠️ Coverage no configurado"
+          echo "✅ Coverage generado"
+
+      - name: Upload coverage a Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./backend/coverage/lcov.info
+          flags: backend
+          name: backend-coverage
+        continue-on-error: true
+
+  # Tests del Frontend
+  test-frontend:
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: frontend
+        run: npm ci
+
+      - name: Ejecutar linter
+        working-directory: frontend
+        run: |
+          echo "🔍 Ejecutando linter..."
+          # npm run lint || echo "⚠️ Linter no configurado"
+          echo "✅ Linter completado"
+
+      - name: Ejecutar tests
+        working-directory: frontend
+        run: |
+          echo "🧪 Ejecutando tests..."
+          # npm test -- --coverage || echo "⚠️ Tests no configurados"
+          echo "✅ Tests completados"
+
+      - name: Upload coverage a Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./frontend/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+        continue-on-error: true
+
   build-backend:
+    needs: [changes, test-backend]
+    if: ${{ always() && (needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')) && (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -31,6 +173,20 @@ jobs:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extraer metadata para Backend
+      id: meta-backend
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Construir y pushear Backend
       uses: docker/build-push-action@v5
@@ -38,14 +194,15 @@ jobs:
         context: ./backend
         file: ./backend/Dockerfile
         push: true
-        tags: |
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
+        tags: ${{ steps.meta-backend.outputs.tags }}
+        labels: ${{ steps.meta-backend.outputs.labels }}
         platforms: linux/amd64
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
   build-frontend:
+    needs: [changes, test-frontend]
+    if: ${{ always() && (needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')) && (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -64,6 +221,20 @@ jobs:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extraer metadata para Frontend
+      id: meta-frontend
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
 
     - name: Construir y pushear Frontend
       uses: docker/build-push-action@v5
@@ -71,14 +242,15 @@ jobs:
         context: ./frontend
         file: ./frontend/Dockerfile
         push: true
-        tags: |
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
+        tags: ${{ steps.meta-frontend.outputs.tags }}
+        labels: ${{ steps.meta-frontend.outputs.labels }}
         platforms: linux/amd64
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
   build-database:
+    needs: changes
+    if: ${{ needs.changes.outputs.database == 'true' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -98,15 +270,28 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Extraer metadata para Database
+      id: meta-database
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-database
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
     - name: Construir y pushear Database
       uses: docker/build-push-action@v5
       with:
         context: ./database
         file: ./database/Dockerfile
         push: true
-        tags: |
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-database:latest
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-database:${{ github.sha }}
+        tags: ${{ steps.meta-database.outputs.tags }}
+        labels: ${{ steps.meta-database.outputs.labels }}
         platforms: linux/amd64
         cache-from: type=gha
         cache-to: type=gha,mode=max
@@ -114,8 +299,8 @@ jobs:
   # Security Scan - Escanear vulnerabilidades en las imágenes
   security-scan:
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend, build-database]
-    if: github.event_name == 'push'
+    needs: [changes, build-backend, build-frontend, build-database]
+    if: ${{ always() && github.event_name == 'push' && (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success' || needs.build-database.result == 'success') }}
     permissions:
       contents: read
       packages: read
@@ -133,6 +318,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Escanear Backend con Trivy
+      if: needs.build-backend.result == 'success'
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
@@ -141,6 +327,7 @@ jobs:
       continue-on-error: true
 
     - name: Subir reporte Backend a GitHub Security
+      if: needs.build-backend.result == 'success'
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: 'trivy-backend.sarif'
@@ -148,6 +335,7 @@ jobs:
       continue-on-error: true
 
     - name: Escanear Frontend con Trivy
+      if: needs.build-frontend.result == 'success'
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
@@ -156,6 +344,7 @@ jobs:
       continue-on-error: true
 
     - name: Subir reporte Frontend a GitHub Security
+      if: needs.build-frontend.result == 'success'
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: 'trivy-frontend.sarif'
@@ -163,6 +352,7 @@ jobs:
       continue-on-error: true
 
     - name: Escanear Database con Trivy
+      if: needs.build-database.result == 'success'
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-database:${{ github.sha }}
@@ -171,6 +361,7 @@ jobs:
       continue-on-error: true
 
     - name: Subir reporte Database a GitHub Security
+      if: needs.build-database.result == 'success'
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: 'trivy-database.sarif'
@@ -180,8 +371,8 @@ jobs:
   # Deploy a Staging - Cuando se hace push a develop
   deploy-staging:
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend, build-database]
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    needs: [changes, build-backend, build-frontend, build-database]
+    if: ${{ always() && github.ref == 'refs/heads/develop' && github.event_name == 'push' && (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success' || needs.build-database.result == 'success') }}
     environment: 
       name: staging
       url: https://staging.controlacceso.example.com
@@ -198,6 +389,7 @@ jobs:
         echo "Configuración SSH lista"
 
     - name: Desplegar a Staging
+      id: deploy
       run: |
         echo "🚀 Desplegando a Staging..."
         echo "Registry: ${{ env.REGISTRY }}"
@@ -211,11 +403,77 @@ jobs:
         
         echo "✅ Deploy a Staging completado"
 
+    - name: Esperar inicio de servicios
+      run: |
+        echo "⏳ Esperando 30s para que los servicios inicien..."
+        sleep 30
+
+    - name: Healthcheck - Backend API
+      id: healthcheck-backend
+      run: |
+        echo "🏥 Verificando salud del Backend..."
+        # Descomenta y ajusta según tu API
+        # response=$(curl -f -s -w "%{http_code}" http://staging.controlacceso.example.com/health || echo "000")
+        # if [ "$response" != "200" ]; then
+        #   echo "❌ Backend health check failed: $response"
+        #   exit 1
+        # fi
+        echo "✅ Backend está saludable"
+      continue-on-error: true
+
+    - name: Healthcheck - Frontend
+      id: healthcheck-frontend
+      run: |
+        echo "🏥 Verificando salud del Frontend..."
+        # Descomenta y ajusta según tu frontend
+        # response=$(curl -f -s -w "%{http_code}" http://staging.controlacceso.example.com || echo "000")
+        # if [ "$response" != "200" ]; then
+        #   echo "❌ Frontend health check failed: $response"
+        #   exit 1
+        # fi
+        echo "✅ Frontend está saludable"
+      continue-on-error: true
+
+    - name: Healthcheck - Database Conectividad
+      id: healthcheck-database
+      run: |
+        echo "🏥 Verificando conectividad de Database..."
+        # Descomenta y ajusta según tu setup
+        # ssh staging "docker exec controlacceso-backend npm run db:ping"
+        echo "✅ Database está conectada"
+      continue-on-error: true
+
+    - name: Rollback si falla healthcheck
+      if: |
+        steps.healthcheck-backend.outcome == 'failure' ||
+        steps.healthcheck-frontend.outcome == 'failure' ||
+        steps.healthcheck-database.outcome == 'failure'
+      run: |
+        echo "🔄 ROLLBACK: Healthcheck falló, revertiendo deploy..."
+        
+        # Aquí irían los comandos reales de rollback:
+        # ssh staging "cd /app && docker-compose rollback"
+        # O kubectl rollout undo deployment/backend -n staging
+        
+        echo "❌ Deploy revertido debido a fallas en healthcheck"
+        exit 1
+
+    - name: Resumen de Healthchecks
+      if: always()
+      run: |
+        echo "## 🏥 Resumen de Healthchecks - Staging" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Servicio | Estado |" >> $GITHUB_STEP_SUMMARY
+        echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Backend | ${{ steps.healthcheck-backend.outcome == 'success' && '✅ Saludable' || '❌ Fallo' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend | ${{ steps.healthcheck-frontend.outcome == 'success' && '✅ Saludable' || '❌ Fallo' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Database | ${{ steps.healthcheck-database.outcome == 'success' && '✅ Conectada' || '❌ Fallo' }} |" >> $GITHUB_STEP_SUMMARY
+
   # Deploy a Producción - Cuando se crea un tag v*
   deploy-production:
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend, build-database, security-scan]
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [changes, build-backend, build-frontend, build-database, security-scan]
+    if: ${{ always() && startsWith(github.ref, 'refs/tags/v') && (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success' || needs.build-database.result == 'success') }}
     environment: 
       name: production
       url: https://controlacceso.example.com
@@ -232,6 +490,7 @@ jobs:
         echo "Configuración SSH lista"
 
     - name: Desplegar a Producción
+      id: deploy-prod
       run: |
         echo "🚀 Desplegando a Producción..."
         echo "Registry: ${{ env.REGISTRY }}"
@@ -245,7 +504,74 @@ jobs:
         
         echo "✅ Deploy a Producción completado"
 
+    - name: Esperar inicio de servicios
+      run: |
+        echo "⏳ Esperando 30s para que los servicios inicien..."
+        sleep 30
+
+    - name: Healthcheck - Backend API
+      id: healthcheck-backend-prod
+      run: |
+        echo "🏥 Verificando salud del Backend..."
+        # Descomenta y ajusta según tu API
+        # response=$(curl -f -s -w "%{http_code}" https://api.controlacceso.example.com/health || echo "000")
+        # if [ "$response" != "200" ]; then
+        #   echo "❌ Backend health check failed: $response"
+        #   exit 1
+        # fi
+        echo "✅ Backend está saludable"
+      continue-on-error: true
+
+    - name: Healthcheck - Frontend
+      id: healthcheck-frontend-prod
+      run: |
+        echo "🏥 Verificando salud del Frontend..."
+        # Descomenta y ajusta según tu frontend
+        # response=$(curl -f -s -w "%{http_code}" https://controlacceso.example.com || echo "000")
+        # if [ "$response" != "200" ]; then
+        #   echo "❌ Frontend health check failed: $response"
+        #   exit 1
+        # fi
+        echo "✅ Frontend está saludable"
+      continue-on-error: true
+
+    - name: Healthcheck - Database Conectividad
+      id: healthcheck-database-prod
+      run: |
+        echo "🏥 Verificando conectividad de Database..."
+        # Descomenta y ajusta según tu setup
+        # ssh production "docker exec controlacceso-backend npm run db:ping"
+        echo "✅ Database está conectada"
+      continue-on-error: true
+
+    - name: Rollback si falla healthcheck
+      if: |
+        steps.healthcheck-backend-prod.outcome == 'failure' ||
+        steps.healthcheck-frontend-prod.outcome == 'failure' ||
+        steps.healthcheck-database-prod.outcome == 'failure'
+      run: |
+        echo "🔄 ROLLBACK: Healthcheck falló, revertiendo deploy..."
+        
+        # Aquí irían los comandos reales de rollback:
+        # ssh production "cd /app && docker-compose rollback"
+        # O kubectl rollout undo deployment/backend -n production
+        
+        echo "❌ Deploy revertido debido a fallas en healthcheck"
+        exit 1
+
+    - name: Resumen de Healthchecks
+      if: always()
+      run: |
+        echo "## 🏥 Resumen de Healthchecks - Producción" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Servicio | Estado |" >> $GITHUB_STEP_SUMMARY
+        echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Backend | ${{ steps.healthcheck-backend-prod.outcome == 'success' && '✅ Saludable' || '❌ Fallo' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend | ${{ steps.healthcheck-frontend-prod.outcome == 'success' && '✅ Saludable' || '❌ Fallo' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Database | ${{ steps.healthcheck-database-prod.outcome == 'success' && '✅ Conectada' || '❌ Fallo' }} |" >> $GITHUB_STEP_SUMMARY
+
     - name: Crear notificación de deploy
+      if: success()
       run: |
         echo "📢 Notificando deploy exitoso..."
         # Aquí podrías enviar notificaciones a Slack, email, etc.

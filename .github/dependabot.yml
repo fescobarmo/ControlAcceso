@@ -1,0 +1,120 @@
+# Configuración de Dependabot para actualizaciones automáticas
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # Actualizar dependencias de npm en backend
+  - package-ecosystem: "npm"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "backend"
+    commit-message:
+      prefix: "chore(backend)"
+      include: "scope"
+    reviewers:
+      - "fescobarmo"
+    # Agrupar actualizaciones de dependencias de desarrollo
+    groups:
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Actualizar dependencias de npm en frontend
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "frontend"
+    commit-message:
+      prefix: "chore(frontend)"
+      include: "scope"
+    reviewers:
+      - "fescobarmo"
+    groups:
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Actualizar dependencias de npm en database (scripts)
+  - package-ecosystem: "npm"
+    directory: "/database"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "database"
+    commit-message:
+      prefix: "chore(database)"
+    reviewers:
+      - "fescobarmo"
+
+  # Actualizar imágenes base de Docker
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    labels:
+      - "docker"
+      - "backend"
+    commit-message:
+      prefix: "chore(docker)"
+
+  - package-ecosystem: "docker"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    labels:
+      - "docker"
+      - "frontend"
+    commit-message:
+      prefix: "chore(docker)"
+
+  - package-ecosystem: "docker"
+    directory: "/database"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    labels:
+      - "docker"
+      - "database"
+    commit-message:
+      prefix: "chore(docker)"
+
+  # Actualizar GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "first monday"
+      time: "09:00"
+    labels:
+      - "github-actions"
+      - "ci-cd"
+    commit-message:
+      prefix: "chore(ci)"
+    reviewers:
+      - "fescobarmo"
+
