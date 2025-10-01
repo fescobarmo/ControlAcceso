@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository_owner }}/controlacceso
 
 jobs:
   build-and-push:
@@ -61,6 +61,15 @@ jobs:
         echo "NODE_VERSION=$(grep '^NODE_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
         echo "POSTGRES_VERSION=$(grep '^POSTGRES_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
         echo "NGINX_VERSION=$(grep '^NGINX_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+
+    - name: Debug - Verificar contexto de build
+      run: |
+        echo "Service: ${{ matrix.service }}"
+        echo "Context path: ./${{ matrix.service }}"
+        ls -la ./${{ matrix.service }}
+        echo "Verificando archivos críticos:"
+        ls -la ./${{ matrix.service }}/src/ || echo "No src directory"
+        ls -la ./${{ matrix.service }}/package.json || echo "No package.json"
 
     - name: Construir y hacer push de imagen Docker
       uses: docker/build-push-action@v5

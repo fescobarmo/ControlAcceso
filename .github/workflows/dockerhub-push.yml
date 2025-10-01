@@ -52,6 +52,14 @@ jobs:
         echo "POSTGRES_VERSION=$(grep '^POSTGRES_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
         echo "NGINX_VERSION=$(grep '^NGINX_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
 
+    - name: Debug - Verificar contexto de build (Backend)
+      run: |
+        echo "Context path: ./backend"
+        ls -la ./backend
+        echo "Verificando archivos críticos:"
+        ls -la ./backend/src/ || echo "No src directory"
+        ls -la ./backend/package.json || echo "No package.json"
+
     - name: Construir y hacer push de Backend
       uses: docker/build-push-action@v5
       with:
@@ -68,6 +76,14 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
         platforms: linux/amd64
+
+    - name: Debug - Verificar contexto de build (Frontend)
+      run: |
+        echo "Context path: ./frontend"
+        ls -la ./frontend
+        echo "Verificando archivos críticos:"
+        ls -la ./frontend/src/ || echo "No src directory"
+        ls -la ./frontend/package.json || echo "No package.json"
 
     - name: Construir y hacer push de Frontend
       uses: docker/build-push-action@v5
@@ -86,6 +102,14 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
         platforms: linux/amd64
+
+    - name: Debug - Verificar contexto de build (Database)
+      run: |
+        echo "Context path: ./database"
+        ls -la ./database
+        echo "Verificando archivos críticos:"
+        ls -la ./database/schema.sql || echo "No schema.sql"
+        ls -la ./database/Dockerfile || echo "No Dockerfile"
 
     - name: Construir y hacer push de Database
       uses: docker/build-push-action@v5

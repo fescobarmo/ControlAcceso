@@ -1,5 +1,10 @@
 # Fix: Error en Docker Build del Backend
 
+> ⚠️ **NOTA IMPORTANTE**: Este documento describe el **primer intento de solución**. 
+> El error real era el **nombre de imagen con mayúsculas**. Ver: `FIX_DOCKER_IMAGE_NAME_ERROR.md`
+> 
+> Sin embargo, el fix de multi-platform también era necesario y válido.
+
 ## ❌ Error Reportado
 
 ```
