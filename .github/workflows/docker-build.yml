@@ -54,6 +54,14 @@ jobs:
 
     - name: Cargar variables de versión
       run: |
+        if [ ! -f VERSION ]; then
+          echo "❌ ERROR: Archivo VERSION no encontrado"
+          exit 1
+        fi
+        echo "✅ Archivo VERSION encontrado"
+        cat VERSION
+        echo ""
+        echo "Cargando variables..."
         echo "SYSTEM_VERSION=$(grep '^SYSTEM_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
         echo "BACKEND_VERSION=$(grep '^BACKEND_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
         echo "FRONTEND_VERSION=$(grep '^FRONTEND_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
@@ -61,15 +69,34 @@ jobs:
         echo "NODE_VERSION=$(grep '^NODE_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
         echo "POSTGRES_VERSION=$(grep '^POSTGRES_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
         echo "NGINX_VERSION=$(grep '^NGINX_VERSION=' VERSION | cut -d'=' -f2)" >> $GITHUB_ENV
+        echo "✅ Variables cargadas"
 
     - name: Debug - Verificar contexto de build
       run: |
+        echo "=== DEBUG INFO ==="
         echo "Service: ${{ matrix.service }}"
+        echo "Registry: ${{ env.REGISTRY }}"
+        echo "Image Name: ${{ env.IMAGE_NAME }}"
+        echo "Full Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}"
         echo "Context path: ./${{ matrix.service }}"
+        echo ""
+        echo "=== VERSIONS ==="
+        echo "BACKEND_VERSION: ${{ env.BACKEND_VERSION }}"
+        echo "FRONTEND_VERSION: ${{ env.FRONTEND_VERSION }}"
+        echo "DATABASE_VERSION: ${{ env.DATABASE_VERSION }}"
+        echo "NODE_VERSION: ${{ env.NODE_VERSION }}"
+        echo ""
+        echo "=== METADATA TAGS ==="
+        echo "Tags: ${{ steps.meta.outputs.tags }}"
+        echo "Labels: ${{ steps.meta.outputs.labels }}"
+        echo ""
+        echo "=== FILES ==="
         ls -la ./${{ matrix.service }}
-        echo "Verificando archivos críticos:"
+        echo ""
+        echo "=== CRITICAL FILES ==="
         ls -la ./${{ matrix.service }}/src/ || echo "No src directory"
         ls -la ./${{ matrix.service }}/package.json || echo "No package.json"
+        ls -la ./${{ matrix.service }}/Dockerfile || echo "No Dockerfile"
 
     - name: Construir y hacer push de imagen Docker
       uses: docker/build-push-action@v5
