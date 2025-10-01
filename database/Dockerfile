@@ -24,6 +24,7 @@ RUN apk add --no-cache curl
 # Copiar scripts de inicialización
 COPY schema.sql /docker-entrypoint-initdb.d/01-schema.sql
 COPY init-db.js /docker-entrypoint-initdb.d/02-init-db.js
+COPY verify-integrity.sql /docker-entrypoint-initdb.d/03-verify-integrity.sql
 
 # Configurar permisos
 RUN chmod 644 /docker-entrypoint-initdb.d/*.sql /docker-entrypoint-initdb.d/*.js

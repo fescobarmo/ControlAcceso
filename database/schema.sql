@@ -325,101 +325,128 @@ CREATE TRIGGER audit_logs_acceso_trigger AFTER INSERT OR UPDATE OR DELETE ON log
 -- =====================================================
 
 -- Insertar roles básicos con información detallada
-INSERT INTO roles (nombre, descripcion, nivel_acceso, permisos_especiales, color, icono) VALUES
-('Super Administrador', 'Control total del sistema con acceso a todas las funcionalidades', 10, '{"all": true, "system_admin": true}', '#d32f2f', 'admin_panel_settings'),
-('Administrador', 'Administración completa del sistema de control de acceso', 8, '{"users": true, "areas": true, "devices": true, "reports": true, "settings": true}', '#f57c00', 'security'),
-('Gerente', 'Gestión de áreas y supervisión de personal', 7, '{"users": {"read": true, "write": true}, "areas": true, "reports": true, "analytics": true}', '#7b1fa2', 'supervisor_account'),
-('Supervisor', 'Supervisión de áreas asignadas y gestión de personal', 6, '{"users": {"read": true}, "areas": {"read": true, "write": true}, "reports": {"read": true}}', '#1976d2', 'manage_accounts'),
-('Coordinador', 'Coordinación de actividades y gestión de accesos', 5, '{"users": {"read": true}, "areas": {"read": true}, "access_control": true}', '#388e3c', 'group'),
-('Usuario Avanzado', 'Usuario con acceso extendido a funcionalidades específicas', 4, '{"areas": {"read": true, "write": true}, "profile": true, "reports": {"read": true}}', '#ff9800', 'person_add'),
-('Usuario Estándar', 'Usuario básico con acceso a áreas autorizadas', 3, '{"areas": {"read": true}, "profile": {"read": true, "write": true}}', '#2196f3', 'person'),
-('Usuario Limitado', 'Usuario con acceso restringido a áreas específicas', 2, '{"areas": {"read": true}, "profile": {"read": true}}', '#9e9e9e', 'person_outline'),
-('Invitado', 'Acceso temporal y limitado al sistema', 1, '{"areas": {"read": true, "temporary": true}}', '#757575', 'person_off'),
-('Auditor', 'Solo lectura de reportes y logs del sistema', 2, '{"reports": {"read": true}, "logs": {"read": true}, "audit": true}', '#607d8b', 'assessment')
-ON CONFLICT (nombre) DO NOTHING;
+-- NOTA: IDs explícitos para garantizar integridad referencial con usuarios
+INSERT INTO roles (id, nombre, descripcion, nivel_acceso, permisos_especiales, color, icono) VALUES
+(1, 'Super Administrador', 'Control total del sistema con acceso a todas las funcionalidades', 10, '{"all": true, "system_admin": true}', '#d32f2f', 'admin_panel_settings'),
+(2, 'Administrador', 'Administración completa del sistema de control de acceso', 8, '{"users": true, "areas": true, "devices": true, "reports": true, "settings": true}', '#f57c00', 'security'),
+(3, 'Gerente', 'Gestión de áreas y supervisión de personal', 7, '{"users": {"read": true, "write": true}, "areas": true, "reports": true, "analytics": true}', '#7b1fa2', 'supervisor_account'),
+(4, 'Supervisor', 'Supervisión de áreas asignadas y gestión de personal', 6, '{"users": {"read": true}, "areas": {"read": true, "write": true}, "reports": {"read": true}}', '#1976d2', 'manage_accounts'),
+(5, 'Coordinador', 'Coordinación de actividades y gestión de accesos', 5, '{"users": {"read": true}, "areas": {"read": true}, "access_control": true}', '#388e3c', 'group'),
+(6, 'Usuario Avanzado', 'Usuario con acceso extendido a funcionalidades específicas', 4, '{"areas": {"read": true, "write": true}, "profile": true, "reports": {"read": true}}', '#ff9800', 'person_add'),
+(7, 'Usuario Estándar', 'Usuario básico con acceso a áreas autorizadas', 3, '{"areas": {"read": true}, "profile": {"read": true, "write": true}}', '#2196f3', 'person'),
+(8, 'Usuario Limitado', 'Usuario con acceso restringido a áreas específicas', 2, '{"areas": {"read": true}, "profile": {"read": true}}', '#9e9e9e', 'person_outline'),
+(9, 'Invitado', 'Acceso temporal y limitado al sistema', 1, '{"areas": {"read": true, "temporary": true}}', '#757575', 'person_off'),
+(10, 'Auditor', 'Solo lectura de reportes y logs del sistema', 2, '{"reports": {"read": true}, "logs": {"read": true}, "audit": true}', '#607d8b', 'assessment')
+ON CONFLICT (id) DO UPDATE SET
+    nombre = EXCLUDED.nombre,
+    descripcion = EXCLUDED.descripcion,
+    nivel_acceso = EXCLUDED.nivel_acceso,
+    permisos_especiales = EXCLUDED.permisos_especiales,
+    color = EXCLUDED.color,
+    icono = EXCLUDED.icono,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- Actualizar la secuencia de roles para el siguiente ID
+SELECT setval('roles_id_seq', (SELECT MAX(id) FROM roles));
 
 -- =====================================================
 -- DATOS INICIALES - PERFILES COMPLETOS
 -- =====================================================
 
 -- Insertar perfiles básicos con permisos detallados
-INSERT INTO perfiles (nombre, descripcion, permisos, nivel_seguridad, modulos_acceso, restricciones_horarias, color, icono) VALUES
-('Super Administrador del Sistema', 'Control total del sistema con acceso a todas las funcionalidades y configuraciones', 
+-- NOTA: IDs explícitos para garantizar integridad referencial con usuarios
+INSERT INTO perfiles (id, nombre, descripcion, permisos, nivel_seguridad, modulos_acceso, restricciones_horarias, color, icono) VALUES
+(1, 'Super Administrador del Sistema', 'Control total del sistema con acceso a todas las funcionalidades y configuraciones', 
  '{"all": true, "system": true, "users": true, "areas": true, "devices": true, "reports": true, "settings": true, "audit": true}', 
  5, 
  '{"dashboard", "usuarios", "areas", "dispositivos", "reportes", "configuracion", "auditoria", "sistema"}',
  '{"dias_semana": [1,2,3,4,5,6,7], "hora_inicio": "00:00", "hora_fin": "23:59"}',
  '#d32f2f', 'admin_panel_settings'),
 
-('Administrador del Sistema', 'Administración completa del sistema de control de acceso', 
+(2, 'Administrador del Sistema', 'Administración completa del sistema de control de acceso', 
  '{"users": true, "areas": true, "devices": true, "reports": true, "settings": true, "audit": {"read": true}}', 
  4, 
  '{"dashboard", "usuarios", "areas", "dispositivos", "reportes", "configuracion"}',
  '{"dias_semana": [1,2,3,4,5], "hora_inicio": "07:00", "hora_fin": "22:00"}',
  '#f57c00', 'security'),
 
-('Gerente de Seguridad', 'Gestión de áreas de seguridad y supervisión de personal', 
+(3, 'Gerente de Seguridad', 'Gestión de áreas de seguridad y supervisión de personal', 
  '{"users": {"read": true, "write": true}, "areas": true, "reports": true, "analytics": true, "access_control": true}', 
  4, 
  '{"dashboard", "usuarios", "areas", "reportes", "analiticas", "control_acceso"}',
  '{"dias_semana": [1,2,3,4,5], "hora_inicio": "06:00", "hora_fin": "23:00"}',
  '#7b1fa2', 'supervisor_account'),
 
-('Supervisor de Área', 'Supervisión de áreas asignadas y gestión de personal', 
+(4, 'Supervisor de Área', 'Supervisión de áreas asignadas y gestión de personal', 
  '{"users": {"read": true}, "areas": {"read": true, "write": true}, "reports": {"read": true}, "access_control": {"read": true}}', 
  3, 
  '{"dashboard", "usuarios", "areas", "reportes", "control_acceso"}',
  '{"dias_semana": [1,2,3,4,5], "hora_inicio": "07:00", "hora_fin": "20:00"}',
  '#1976d2', 'manage_accounts'),
 
-('Coordinador de Accesos', 'Coordinación de actividades y gestión de accesos', 
+(5, 'Coordinador de Accesos', 'Coordinación de actividades y gestión de accesos', 
  '{"users": {"read": true}, "areas": {"read": true}, "access_control": true, "reports": {"read": true}}', 
  3, 
  '{"dashboard", "usuarios", "areas", "control_acceso", "reportes"}',
  '{"dias_semana": [1,2,3,4,5], "hora_inicio": "08:00", "hora_fin": "18:00"}',
  '#388e3c', 'group'),
 
-('Usuario Avanzado', 'Usuario con acceso extendido a funcionalidades específicas', 
+(6, 'Usuario Avanzado', 'Usuario con acceso extendido a funcionalidades específicas', 
  '{"areas": {"read": true, "write": true}, "profile": true, "reports": {"read": true}, "dashboard": true}', 
  2, 
  '{"dashboard", "areas", "perfil", "reportes"}',
  '{"dias_semana": [1,2,3,4,5], "hora_inicio": "08:00", "hora_fin": "18:00"}',
  '#ff9800', 'person_add'),
 
-('Usuario Estándar', 'Usuario básico con acceso a áreas autorizadas', 
+(7, 'Usuario Estándar', 'Usuario básico con acceso a áreas autorizadas', 
  '{"areas": {"read": true}, "profile": {"read": true, "write": true}, "dashboard": true}', 
  2, 
  '{"dashboard", "areas", "perfil"}',
  '{"dias_semana": [1,2,3,4,5], "hora_inicio": "08:00", "hora_fin": "18:00"}',
  '#2196f3', 'person'),
 
-('Usuario Limitado', 'Usuario con acceso restringido a áreas específicas', 
+(8, 'Usuario Limitado', 'Usuario con acceso restringido a áreas específicas', 
  '{"areas": {"read": true}, "profile": {"read": true}, "dashboard": true}', 
  1, 
  '{"dashboard", "areas", "perfil"}',
  '{"dias_semana": [1,2,3,4,5], "hora_inicio": "09:00", "hora_fin": "17:00"}',
  '#9e9e9e', 'person_outline'),
 
-('Invitado Temporal', 'Acceso temporal y limitado al sistema', 
+(9, 'Invitado Temporal', 'Acceso temporal y limitado al sistema', 
  '{"areas": {"read": true, "temporary": true}, "profile": {"read": true}}', 
  1, 
  '{"areas", "perfil"}',
  '{"dias_semana": [1,2,3,4,5], "hora_inicio": "09:00", "hora_fin": "17:00"}',
  '#757575', 'person_off'),
 
-('Auditor del Sistema', 'Solo lectura de reportes y logs del sistema', 
+(10, 'Auditor del Sistema', 'Solo lectura de reportes y logs del sistema', 
  '{"reports": {"read": true}, "logs": {"read": true}, "audit": true, "dashboard": true}', 
  2, 
  '{"dashboard", "reportes", "logs", "auditoria"}',
  '{"dias_semana": [1,2,3,4,5], "hora_inicio": "08:00", "hora_fin": "18:00"}',
  '#607d8b', 'assessment')
-ON CONFLICT (nombre) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+    nombre = EXCLUDED.nombre,
+    descripcion = EXCLUDED.descripcion,
+    permisos = EXCLUDED.permisos,
+    nivel_seguridad = EXCLUDED.nivel_seguridad,
+    modulos_acceso = EXCLUDED.modulos_acceso,
+    restricciones_horarias = EXCLUDED.restricciones_horarias,
+    color = EXCLUDED.color,
+    icono = EXCLUDED.icono,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- Actualizar la secuencia de perfiles para el siguiente ID
+SELECT setval('perfiles_id_seq', (SELECT MAX(id) FROM perfiles));
 
 -- =====================================================
 -- DATOS INICIALES - USUARIO ADMINISTRADOR
 -- =====================================================
 
 -- Insertar usuario administrador por defecto
+-- NOTA: rol_id = 2 corresponde a 'Administrador' (definido arriba con ID explícito)
+-- NOTA: perfil_id = 2 corresponde a 'Administrador del Sistema' (definido arriba con ID explícito)
+-- Los IDs están garantizados por los INSERT anteriores con IDs explícitos
 INSERT INTO usuarios (nombre, apellido, email, username, password_hash, rol_id, perfil_id, estado) VALUES
 ('Admin', 'Sistema', 'admin@controlacceso.com', 'admin', '$2a$10$rQZ8N3YqX9K2M1L4P7O6Q5R4S3T2U1V0W9X8Y7Z6A5B4C3D2E1F0G9H8I7J6K5L4M3N2O1P0Q9R8S7T6U5V4W3X2Y1Z0', 2, 2, 'activo')
 ON CONFLICT (username) DO NOTHING;
