@@ -3,11 +3,12 @@
 ## 📋 Índice
 
 1. [Error: Job depends on unknown job](#error-job-depends-on-unknown-job)
-2. [Errores Comunes de YAML](#errores-comunes-de-yaml)
-3. [Problemas con Matrix Strategy](#problemas-con-matrix-strategy)
-4. [Errores de Permisos](#errores-de-permisos)
-5. [Timeout y Límites](#timeout-y-límites)
-6. [Cómo Debuggear Workflows](#cómo-debuggear-workflows)
+2. [Error: Acciones Deprecadas](#error-acciones-deprecadas)
+3. [Errores Comunes de YAML](#errores-comunes-de-yaml)
+4. [Problemas con Matrix Strategy](#problemas-con-matrix-strategy)
+5. [Errores de Permisos](#errores-de-permisos)
+6. [Timeout y Límites](#timeout-y-límites)
+7. [Cómo Debuggear Workflows](#cómo-debuggear-workflows)
 
 ---
 
@@ -150,6 +151,346 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
 ```
+
+---
+
+## Error: Acciones Deprecadas
+
+### ❌ Error Reportado
+
+```
+This request has been automatically failed because it uses a deprecated version of `actions/upload-artifact: v3`. 
+Learn more: https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/
+```
+
+### 🔍 ¿Qué significa?
+
+GitHub periódicamente actualiza sus acciones y depreca versiones antiguas por:
+- Mejoras de seguridad
+- Mejor rendimiento
+- Nuevas características
+- Corrección de bugs críticos
+
+### 📋 Acciones Comúnmente Deprecadas
+
+#### 1. `actions/upload-artifact@v3` → `@v4`
+
+**Problema:**
+```yaml
+- name: Subir artefacto
+  uses: actions/upload-artifact@v3  # ❌ Deprecada desde abril 2024
+  with:
+    name: mi-artefacto
+    path: archivo.txt
+```
+
+**Solución:**
+```yaml
+- name: Subir artefacto
+  uses: actions/upload-artifact@v4  # ✅ Versión actual
+  with:
+    name: mi-artefacto
+    path: archivo.txt
+```
+
+**Cambios en v4:**
+- Mejor rendimiento (hasta 10x más rápido)
+- Artefactos agrupados por workflow run
+- Mejor manejo de grandes archivos
+- API mejorada
+
+#### 2. `actions/download-artifact@v3` → `@v4`
+
+**Problema:**
+```yaml
+- name: Descargar artefacto
+  uses: actions/download-artifact@v3  # ❌ Deprecada
+  with:
+    name: mi-artefacto
+```
+
+**Solución:**
+```yaml
+- name: Descargar artefacto
+  uses: actions/download-artifact@v4  # ✅ Versión actual
+  with:
+    name: mi-artefacto
+```
+
+#### 3. `actions/create-release@v1` → `softprops/action-gh-release@v1`
+
+**Problema:**
+```yaml
+- name: Crear release
+  uses: actions/create-release@v1  # ❌ Deprecada y no mantenida
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  with:
+    tag_name: ${{ github.ref }}
+    release_name: Release v1.0.0
+```
+
+**Solución Opción 1 - Action moderna:**
+```yaml
+- name: Crear release
+  uses: softprops/action-gh-release@v1  # ✅ Mantenida activamente
+  with:
+    tag_name: ${{ github.ref }}
+    name: Release v1.0.0
+    body_path: CHANGELOG.md
+    draft: false
+    prerelease: false
+    token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**Solución Opción 2 - GitHub CLI:**
+```yaml
+- name: Crear release
+  run: |
+    gh release create ${{ github.ref_name }} \
+      --title "Release v1.0.0" \
+      --notes-file CHANGELOG.md
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+#### 4. `actions/setup-node@v2` → `@v4`
+
+**Problema:**
+```yaml
+- uses: actions/setup-node@v2  # ❌ Versión antigua
+  with:
+    node-version: '18'
+```
+
+**Solución:**
+```yaml
+- uses: actions/setup-node@v4  # ✅ Versión actual
+  with:
+    node-version: '18'
+    cache: 'npm'  # Bonus: caché integrado
+```
+
+#### 5. `actions/cache@v2` → `@v3`
+
+**Problema:**
+```yaml
+- uses: actions/cache@v2  # ❌ Versión antigua
+  with:
+    path: ~/.npm
+    key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+```
+
+**Solución:**
+```yaml
+- uses: actions/cache@v3  # ✅ Versión actual
+  with:
+    path: ~/.npm
+    key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+```
+
+### 🔍 Cómo Encontrar Acciones Deprecadas
+
+#### Opción 1: Revisar Warnings en GitHub
+
+Ve a tu workflow en GitHub Actions:
+```
+Repository → Actions → [Click en workflow] → Annotations
+```
+
+Verás warnings como:
+```
+⚠️ The following actions uses node12 which is deprecated...
+⚠️ The `set-output` command is deprecated...
+```
+
+#### Opción 2: Buscar en tu Código
+
+```bash
+# Buscar versiones específicas
+grep -rn "@v1" .github/workflows/
+grep -rn "@v2" .github/workflows/
+grep -rn "@v3" .github/workflows/
+
+# Ver todas las acciones y sus versiones
+grep -rn "uses:" .github/workflows/ | grep "@v"
+```
+
+#### Opción 3: GitHub CLI
+
+```bash
+# Ver warnings del último run
+gh run view --log | grep -i "warning\|deprecated"
+```
+
+### 🛠️ Proceso de Actualización
+
+#### Paso 1: Identificar Versiones Actuales
+
+Visita la página de la acción en GitHub:
+```
+https://github.com/actions/upload-artifact
+```
+
+Ve a la sección "Releases" o "Tags" para ver la última versión.
+
+#### Paso 2: Leer el Changelog
+
+Busca cambios importantes (breaking changes):
+```
+https://github.com/actions/upload-artifact/blob/main/CHANGELOG.md
+```
+
+#### Paso 3: Actualizar y Probar
+
+```bash
+# 1. Actualizar en tu código
+sed -i 's/@v3/@v4/g' .github/workflows/mi-workflow.yml
+
+# 2. Commit y push
+git add .github/workflows/
+git commit -m "fix: actualizar actions/upload-artifact a v4"
+git push origin main
+
+# 3. Ver resultado en GitHub Actions
+```
+
+#### Paso 4: Verificar Compatibilidad
+
+Algunos cambios pueden requerir ajustes:
+
+**Ejemplo - upload-artifact v3 → v4:**
+
+```yaml
+# v3 - Paths múltiples
+- uses: actions/upload-artifact@v3
+  with:
+    name: artefactos
+    path: |
+      dist/
+      build/
+
+# v4 - Sintaxis similar (compatible)
+- uses: actions/upload-artifact@v4
+  with:
+    name: artefactos
+    path: |
+      dist/
+      build/
+```
+
+### 📊 Matriz de Actualizaciones Comunes
+
+| Acción Deprecada | Versión Actual | Breaking Changes |
+|------------------|----------------|------------------|
+| `actions/checkout@v2` | `@v4` | Ninguno significativo |
+| `actions/setup-node@v2` | `@v4` | Ninguno |
+| `actions/cache@v2` | `@v3` | Ninguno |
+| `actions/upload-artifact@v3` | `@v4` | Agrupación de artefactos |
+| `actions/download-artifact@v3` | `@v4` | Comportamiento de descarga |
+| `actions/create-release@v1` | Usar alternativa | Action discontinuada |
+| `docker/build-push-action@v3` | `@v5` | Algunas opciones |
+
+### 🔗 Alternativas a Acciones Discontinuadas
+
+#### `actions/create-release` (Discontinuada)
+
+**Alternativa 1 - softprops/action-gh-release:**
+```yaml
+- uses: softprops/action-gh-release@v1
+  with:
+    files: dist/*
+    generate_release_notes: true
+```
+
+**Alternativa 2 - GitHub CLI:**
+```yaml
+- run: gh release create v1.0.0 --generate-notes
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+#### `actions/upload-release-asset` (Discontinuada)
+
+Usa `softprops/action-gh-release`:
+```yaml
+- uses: softprops/action-gh-release@v1
+  with:
+    files: |
+      dist/app.tar.gz
+      dist/checksums.txt
+```
+
+### ⚠️ Comandos Deprecados
+
+Algunos comandos dentro de workflows también están deprecados:
+
+#### `set-output` (Deprecado)
+
+**Problema:**
+```yaml
+- run: echo "::set-output name=version::1.0.0"  # ❌ Deprecado
+```
+
+**Solución:**
+```yaml
+- run: echo "version=1.0.0" >> $GITHUB_OUTPUT  # ✅ Método actual
+```
+
+#### `save-state` (Deprecado)
+
+**Problema:**
+```yaml
+- run: echo "::save-state name=key::value"  # ❌ Deprecado
+```
+
+**Solución:**
+```yaml
+- run: echo "key=value" >> $GITHUB_STATE  # ✅ Método actual
+```
+
+#### `add-path` (Deprecado)
+
+**Problema:**
+```yaml
+- run: echo "::add-path::/custom/path"  # ❌ Deprecado
+```
+
+**Solución:**
+```yaml
+- run: echo "/custom/path" >> $GITHUB_PATH  # ✅ Método actual
+```
+
+### 📝 Resumen de Nuestras Correcciones
+
+En el proyecto ControlAcceso corregimos:
+
+1. **dockerhub-push.yml:**
+   ```yaml
+   # Antes
+   - uses: actions/upload-artifact@v3
+   
+   # Después
+   - uses: actions/upload-artifact@v4
+   ```
+
+2. **version-manager.yml:**
+   ```yaml
+   # Antes
+   - uses: actions/create-release@v1
+   
+   # Después
+   - uses: softprops/action-gh-release@v1
+   ```
+
+3. **Corregido job dependencies:**
+   ```yaml
+   # Antes
+   needs: [build-and-push, create-release]  # build-and-push no existe
+   
+   # Después
+   needs: [create-release]  # Solo dependencias existentes
+   ```
 
 ---
 
