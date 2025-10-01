@@ -124,20 +124,19 @@ jobs:
         git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD~1)..HEAD >> CHANGELOG.md
 
     - name: Crear release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.ref }}
-        release_name: ControlAcceso v${{ env.VERSION }}
+        name: ControlAcceso v${{ env.VERSION }}
         body_path: CHANGELOG.md
         draft: false
         prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}
 
   notify-teams:
     runs-on: ubuntu-latest
     if: always()
-    needs: [build-and-push, create-release]
+    needs: [create-release]
     
     steps:
     - name: Notificar a equipos

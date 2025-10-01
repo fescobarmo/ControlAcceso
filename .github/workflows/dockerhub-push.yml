@@ -172,7 +172,7 @@ jobs:
         EOF
 
     - name: Subir docker-compose de producción
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: docker-compose-production
         path: docker-compose.production.yml
