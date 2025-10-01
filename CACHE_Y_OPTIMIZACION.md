@@ -596,6 +596,8 @@ gh cache list --repo fescobarmo/ControlAcceso | \
 
 ## 🚨 Troubleshooting
 
+> ⚠️ **IMPORTANTE**: Si encuentras el error `duplicate cache exports [inline]`, consulta el documento detallado: **FIX_CACHE_EXPORTS_ERROR.md**
+
 ### Problema 1: Cache no se restaura
 
 **Síntomas**:
