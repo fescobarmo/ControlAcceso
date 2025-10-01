@@ -1,9 +1,16 @@
 name: Docker Hub Push
 
+# ⚠️ WORKFLOW DESHABILITADO
+# Para habilitar, configura los secrets necesarios en GitHub:
+# - DOCKERHUB_USERNAME
+# - DOCKERHUB_TOKEN
+# Y actualiza DOCKERHUB_NAMESPACE en env
+
 on:
-  push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+  # Comentado para deshabilitar
+  # push:
+  #   branches: [ main ]
+  #   tags: [ 'v*' ]
   workflow_dispatch:
 
 env:
