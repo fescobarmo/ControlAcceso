@@ -23,10 +23,43 @@ Sistema moderno y escalable para gestión de accesos, usuarios y permisos con ar
 
 - **Node.js**: v18 o superior
 - **npm**: v8 o superior
-- **PostgreSQL**: v15 o superior
+- **Base de Datos**: PostgreSQL v15+ o Supabase (recomendado)
 - **Git**: Para clonar el repositorio
 
 ## 🚀 Instalación y Configuración
+
+### 🌟 Opción 1: Despliegue con Supabase (Recomendado)
+
+**¿Por qué Supabase?**
+- ✅ Sin configuración de servidor
+- ✅ Base de datos PostgreSQL gestionada
+- ✅ SSL/TLS incluido
+- ✅ Backups automáticos
+- ✅ Escalado automático
+- ✅ Plan gratuito generoso
+
+**Inicio Rápido (15 minutos):**
+
+```bash
+# 1. Configurar Supabase
+npm run setup-supabase
+
+# 2. Migrar base de datos
+npm run migrate
+
+# 3. Verificar conexión
+npm run test-connection
+
+# 4. Iniciar aplicación
+cd backend && npm start
+cd frontend && npm start
+```
+
+📖 **Guía completa**: [INICIO_RAPIDO_SUPABASE.md](./INICIO_RAPIDO_SUPABASE.md)  
+📖 **Guía detallada**: [GUIA_SUPABASE.md](./GUIA_SUPABASE.md)  
+🏗️ **Arquitectura**: [ARQUITECTURA_SUPABASE.md](./ARQUITECTURA_SUPABASE.md)
+
+### 🐳 Opción 2: Despliegue con Docker (Local)
 
 ### 1. Clonar el Repositorio
 ```bash

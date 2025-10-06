@@ -1,0 +1,191 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - preview
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID_FRONTEND: ${{ secrets.VERCEL_PROJECT_ID_FRONTEND }}
+  VERCEL_PROJECT_ID_BACKEND: ${{ secrets.VERCEL_PROJECT_ID_BACKEND }}
+
+jobs:
+  # Job 1: Deploy Frontend to Vercel
+  deploy-frontend:
+    name: Deploy Frontend to Vercel
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: |
+          cd frontend
+          vercel pull --yes --environment=${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        run: |
+          cd frontend
+          vercel build ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel
+        id: deploy
+        run: |
+          cd frontend
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} > deployment-url.txt
+          else
+            vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} > deployment-url.txt
+          fi
+          echo "url=$(cat deployment-url.txt)" >> $GITHUB_OUTPUT
+
+      - name: Comment PR with Frontend URL
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 Frontend deployed to Vercel!\n\n**Preview URL:** ${{ steps.deploy.outputs.url }}'
+            })
+
+  # Job 2: Deploy Backend to Vercel
+  deploy-backend:
+    name: Deploy Backend to Vercel
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
+    needs: deploy-frontend
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: |
+          cd backend
+          vercel pull --yes --environment=${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts
+        run: |
+          cd backend
+          vercel build ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel
+        id: deploy
+        run: |
+          cd backend
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} > deployment-url.txt
+          else
+            vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} > deployment-url.txt
+          fi
+          echo "url=$(cat deployment-url.txt)" >> $GITHUB_OUTPUT
+
+      - name: Comment PR with Backend URL
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 Backend API deployed to Vercel!\n\n**API URL:** ${{ steps.deploy.outputs.url }}'
+            })
+
+  # Job 3: Run Health Checks
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    needs: [deploy-frontend, deploy-backend]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Check Frontend Health
+        run: |
+          echo "Checking frontend health..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ needs.deploy-frontend.outputs.url }})
+          if [ $response -eq 200 ]; then
+            echo "✅ Frontend is healthy"
+          else
+            echo "❌ Frontend health check failed with status $response"
+            exit 1
+          fi
+
+      - name: Check Backend Health
+        run: |
+          echo "Checking backend health..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ needs.deploy-backend.outputs.url }}/api/health)
+          if [ $response -eq 200 ]; then
+            echo "✅ Backend is healthy"
+          else
+            echo "❌ Backend health check failed with status $response"
+            exit 1
+          fi
+
+  # Job 4: Notify Deployment
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [deploy-frontend, deploy-backend, health-check]
+    if: always()
+    
+    steps:
+      - name: Send Success Notification
+        if: needs.health-check.result == 'success'
+        run: |
+          echo "✅ Deployment successful!"
+          echo "Frontend: ${{ needs.deploy-frontend.outputs.url }}"
+          echo "Backend: ${{ needs.deploy-backend.outputs.url }}"
+
+      - name: Send Failure Notification
+        if: needs.health-check.result == 'failure'
+        run: |
+          echo "❌ Deployment failed!"
+          exit 1
+

@@ -2,10 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
-const morgan = require('morgan');
-const { testConnection, syncDatabase } = require('./config/database');
-const { seedInitialData } = require('./seeds/initialData');
-
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -15,18 +11,13 @@ app.use(helmet());
 
 // Middleware de CORS
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*',
   credentials: true
 }));
 
 // Middleware para parsing de JSON
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Middleware de logging
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
 
 // Headers de seguridad adicionales
 app.use((req, res, next) => {
@@ -36,113 +27,186 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check endpoint
+// Health check endpoint - simple version for serverless
 app.get('/health', (req, res) => {
   res.json({
-    status: 'OK',
+    status: 'ok',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    message: 'Backend is running'
   });
 });
 
 // Endpoint de prueba
 app.get('/api/test', (req, res) => {
   res.json({
-    success: true,
-    message: 'Endpoint de prueba funcionando correctamente',
-    timestamp: new Date().toISOString()
+    message: 'API funcionando correctamente',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
+// Lazy load routes to avoid initialization issues
+app.use('/api/auth', (req, res, next) => {
+  try {
+    const authRoutes = require('./routes/auth');
+    authRoutes(req, res, next);
+  } catch (error) {
+    console.error('Error loading auth routes:', error);
+    res.status(500).json({ error: 'Auth routes not available', message: error.message });
+  }
+});
 
+app.use('/api/users', (req, res, next) => {
+  try {
+    const userRoutes = require('./routes/users');
+    userRoutes(req, res, next);
+  } catch (error) {
+    console.error('Error loading user routes:', error);
+    res.status(500).json({ error: 'User routes not available', message: error.message });
+  }
+});
 
-// API Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/visitas', require('./routes/visitas'));
-app.use('/api/visitas-externas', require('./routes/visitasExternas'));
-app.use('/api/access', require('./routes/access'));
-app.use('/api/residentes', require('./routes/residentes'));
-app.use('/api/enrolamiento', require('./routes/enrolamiento'));
-app.use('/api/bitacora', require('./routes/bitacora'));
+app.use('/api/residents', (req, res, next) => {
+  try {
+    const residentRoutes = require('./routes/residents');
+    residentRoutes(req, res, next);
+  } catch (error) {
+    console.error('Error loading resident routes:', error);
+    res.status(500).json({ error: 'Resident routes not available', message: error.message });
+  }
+});
 
-// Rutas directas para compatibilidad
-const userController = require('./controllers/userController');
-app.get('/api/roles', userController.getRoles);
-app.get('/api/perfiles', userController.getProfiles);
+app.use('/api/visitas', (req, res, next) => {
+  try {
+    const visitaRoutes = require('./routes/visitas');
+    visitaRoutes(req, res, next);
+  } catch (error) {
+    console.error('Error loading visita routes:', error);
+    res.status(500).json({ error: 'Visita routes not available', message: error.message });
+  }
+});
 
-// 404 handler
+app.use('/api/areas', (req, res, next) => {
+  try {
+    const areaRoutes = require('./routes/areas');
+    areaRoutes(req, res, next);
+  } catch (error) {
+    console.error('Error loading area routes:', error);
+    res.status(500).json({ error: 'Area routes not available', message: error.message });
+  }
+});
+
+app.use('/api/dispositivos', (req, res, next) => {
+  try {
+    const dispositivoRoutes = require('./routes/dispositivos');
+    dispositivoRoutes(req, res, next);
+  } catch (error) {
+    console.error('Error loading dispositivo routes:', error);
+    res.status(500).json({ error: 'Dispositivo routes not available', message: error.message });
+  }
+});
+
+app.use('/api/bitacora', (req, res, next) => {
+  try {
+    const bitacoraRoutes = require('./routes/bitacora');
+    bitacoraRoutes(req, res, next);
+  } catch (error) {
+    console.error('Error loading bitacora routes:', error);
+    res.status(500).json({ error: 'Bitacora routes not available', message: error.message });
+  }
+});
+
+// Ruta de bienvenida
+app.get('/', (req, res) => {
+  res.json({
+    message: 'API de Control de Acceso',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      test: '/api/test',
+      auth: '/api/auth',
+      users: '/api/users',
+      residents: '/api/residents',
+      visitas: '/api/visitas',
+      areas: '/api/areas',
+      dispositivos: '/api/dispositivos',
+      bitacora: '/api/bitacora'
+    }
+  });
+});
+
+// Manejo de rutas no encontradas
 app.use('*', (req, res) => {
   res.status(404).json({
-    success: false,
-    message: 'Endpoint no encontrado'
+    error: 'Ruta no encontrada',
+    path: req.originalUrl
   });
 });
 
-// Error handler global
-app.use((error, req, res, next) => {
-  console.error('Error no manejado:', error);
-  
-  res.status(error.status || 500).json({
-    success: false,
-    message: error.message || 'Error interno del servidor',
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+// Manejo de errores global
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(err.status || 500).json({
+    error: err.message || 'Error interno del servidor',
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
   });
 });
 
-// Función para inicializar la aplicación
-const initializeApp = async () => {
-  try {
-    // Probar conexión a la base de datos
-    const dbConnected = await testConnection();
-    if (!dbConnected) {
-      console.error('❌ No se pudo conectar a la base de datos. Saliendo...');
+// Función de inicialización para modo servidor (local) - solo si no estamos en Vercel
+if (process.env.VERCEL !== '1' && require.main === module) {
+  const initializeApp = async () => {
+    try {
+      console.log('🚀 Iniciando aplicación en modo local...');
+      
+      // Conectar a la base de datos
+      const { testConnection, syncDatabase } = require('./config/database');
+      const { seedInitialData } = require('./seeds/initialData');
+      
+      console.log('📊 Probando conexión a la base de datos...');
+      const isConnected = await testConnection();
+      
+      if (!isConnected) {
+        console.error('❌ No se pudo conectar a la base de datos. Saliendo...');
+        process.exit(1);
+      }
+
+      // Sincronizar modelos
+      await syncDatabase(false);
+
+      // Cargar datos iniciales
+      console.log('🌱 Cargando datos iniciales...');
+      await seedInitialData();
+
+      // Iniciar servidor
+      app.listen(PORT, () => {
+        console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+        console.log(`📊 Health check: http://localhost:${PORT}/health`);
+        console.log(`🌐 API Base URL: http://localhost:${PORT}/api`);
+        console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+      });
+
+    } catch (error) {
+      console.error('❌ Error inicializando la aplicación:', error);
       process.exit(1);
     }
+  };
 
-    // Sincronizar modelos (crear tablas si no existen)
-    await syncDatabase(false); // false = no forzar recreación de tablas para mantener datos existentes
+  // Manejo de señales de terminación
+  process.on('SIGINT', () => {
+    console.log('\n🛑 Recibida señal SIGINT. Cerrando servidor...');
+    process.exit(0);
+  });
 
-    // Cargar datos iniciales
-    console.log('🌱 Cargando datos iniciales...');
-    await seedInitialData();
+  process.on('SIGTERM', () => {
+    console.log('\n🛑 Recibida señal SIGTERM. Cerrando servidor...');
+    process.exit(0);
+  });
 
-    // Iniciar servidor
-    app.listen(PORT, () => {
-      console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/health`);
-      console.log(`🌐 API Base URL: http://localhost:${PORT}/api`);
-      console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-    });
+  // Inicializar
+  initializeApp();
+}
 
-  } catch (error) {
-    console.error('❌ Error inicializando la aplicación:', error);
-    process.exit(1);
-  }
-};
-
-// Manejo de señales de terminación
-process.on('SIGINT', () => {
-  console.log('\n🛑 Recibida señal SIGINT. Cerrando servidor...');
-  process.exit(0);
-});
-
-process.on('SIGTERM', () => {
-  console.log('\n🛑 Recibida señal SIGTERM. Cerrando servidor...');
-  process.exit(0);
-});
-
-// Manejo de errores no capturados
-process.on('uncaughtException', (error) => {
-  console.error('❌ Excepción no capturada:', error);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Promesa rechazada no manejada:', reason);
-  process.exit(1);
-});
-
-// Inicializar la aplicación
-initializeApp();
+// Exportar la app para Vercel/Serverless
+module.exports = app;

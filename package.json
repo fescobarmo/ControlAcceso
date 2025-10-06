@@ -1,5 +1,19 @@
 {
+  "name": "controlacceso",
+  "version": "1.0.0",
+  "description": "Sistema de Control de Acceso con Supabase",
+  "scripts": {
+    "help": "./scripts/supabase-help.sh",
+    "setup-supabase": "./scripts/setup-supabase.sh",
+    "test-connection": "node scripts/test-supabase-connection.js",
+    "migrate": "./scripts/migrate-to-supabase.sh",
+    "configure:vercel": "./scripts/configure-vercel-env.sh",
+    "deploy:vercel": "./scripts/deploy-vercel.sh",
+    "deploy:docker": "docker-compose up -d --build",
+    "deploy:hybrid": "./scripts/deploy-vercel.sh && docker-compose up -d --build"
+  },
   "dependencies": {
-    "dotenv": "^17.2.1"
+    "dotenv": "^17.2.1",
+    "pg": "^8.11.3"
   }
 }
