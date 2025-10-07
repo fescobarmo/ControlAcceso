@@ -1,7 +1,7 @@
 // Configuración de la aplicación
 const config = {
-  // API Configuration - Usar proxy en desarrollo
-  API_BASE_URL: process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'development' ? '' : 'http://localhost:3001'),
+  // API Configuration - URL actualizada del backend
+  API_BASE_URL: process.env.REACT_APP_API_URL || 'https://controlacceso-backend-hu4iponzv-fescobarmo-gmailcoms-projects.vercel.app',
   
   // App Configuration
   APP_NAME: 'ControlAcceso',
