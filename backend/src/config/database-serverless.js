@@ -61,16 +61,36 @@ const query = async (text, params = []) => {
     }
     
     // Mock para login básico
-    if (text.toLowerCase().includes('select') && text.toLowerCase().includes('usuarios')) {
+    if (text.toLowerCase().includes('select') && (text.toLowerCase().includes('users') || text.toLowerCase().includes('usuarios'))) {
+      // Mock para login con email admin@demo.com
+      if (params && params[0] === 'admin@demo.com') {
+        return {
+          rows: [{
+            id: 1,
+            email: 'admin@demo.com',
+            password: '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6hsxq/3Hm.', // "demo123"
+            nombre: 'Admin',
+            apellido: 'Demo',
+            activo: true,
+            role_id: 1,
+            role_name: 'admin',
+            ultimo_login: new Date().toISOString()
+          }],
+          rowCount: 1
+        };
+      }
+      
+      // Mock genérico para otros usuarios
       return {
-        rows: [{
-          id: 1,
-          username: 'admin',
-          email: 'admin@demo.com',
-          password: '$2b$10$demo.hash.for.testing',
-          is_active: true,
-          role_id: 1
-        }],
+        rows: [],
+        rowCount: 0
+      };
+    }
+    
+    // Mock para updates (último login, bitácora, etc.)
+    if (text.toLowerCase().includes('update') || text.toLowerCase().includes('insert')) {
+      return {
+        rows: [],
         rowCount: 1
       };
     }
