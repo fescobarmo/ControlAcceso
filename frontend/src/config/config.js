@@ -1,7 +1,7 @@
 // Configuración de la aplicación
 const config = {
-  // API Configuration - URL actualizada del backend
-  API_BASE_URL: process.env.REACT_APP_API_URL || 'https://controlacceso-backend-hu4iponzv-fescobarmo-gmailcoms-projects.vercel.app',
+  // API Configuration - URL actualizada del backend (última versión funcional)
+  API_BASE_URL: process.env.REACT_APP_API_URL || 'https://controlacceso-backend-d0uezs488-fescobarmo-gmailcoms-projects.vercel.app',
   
   // App Configuration
   APP_NAME: 'ControlAcceso',
