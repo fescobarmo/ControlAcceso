@@ -13,29 +13,41 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// Middleware de CORS - Soporte para múltiples orígenes
-const corsOrigins = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*';
-const allowedOrigins = corsOrigins === '*' ? '*' : corsOrigins.split(',').map(origin => origin.trim());
+// Middleware de CORS - Configuración simplificada
+const allowedOrigins = [
+  'https://controlacceso-frontend.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:3001'
+];
 
 app.use(cors({
   origin: function (origin, callback) {
+    console.log('CORS Origin check:', origin);
+    
     // Permitir requests sin origin (como Postman, curl, etc.)
     if (!origin) return callback(null, true);
     
-    // Si allowedOrigins es '*', permitir todo
-    if (allowedOrigins === '*') return callback(null, true);
-    
     // Verificar si el origin está en la lista permitida
     if (allowedOrigins.includes(origin)) {
+      console.log('CORS: Origin permitido:', origin);
       return callback(null, true);
     }
     
-    // Rechazar si no está permitido
+    // También permitir desde variables de entorno
+    const envOrigin = process.env.CORS_ORIGIN || process.env.FRONTEND_URL;
+    if (envOrigin && origin === envOrigin) {
+      console.log('CORS: Origin permitido desde env:', origin);
+      return callback(null, true);
+    }
+    
+    console.log('CORS: Origin rechazado:', origin);
     return callback(new Error('No permitido por CORS'), false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  preflightContinue: false,
+  optionsSuccessStatus: 200
 }));
 
 // Middleware para parsing de JSON
