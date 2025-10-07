@@ -68,7 +68,7 @@ const query = async (text, params = []) => {
           rows: [{
             id: 1,
             email: 'admin@demo.com',
-            password: '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6hsxq/3Hm.', // "demo123"
+            password: '$2a$12$F9ucK1KTiQp1HG6ex0btj.K0JuU9.aEXRnQ0GOeA2hWmblXS8X9v.', // "demo123"
             nombre: 'Admin',
             apellido: 'Demo',
             activo: true,
