@@ -1,13 +1,14 @@
-name: Deploy to Vercel
+name: Deploy to Vercel (Desactivado - Usar deployment manual)
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - main
+  # Workflow desactivado temporalmente - usar `vercel --prod` manualmente
+  # push:
+  #   branches:
+  #     - main
+  #     - develop
+  # pull_request:
+  #   branches:
+  #     - main
   workflow_dispatch:
     inputs:
       environment:
