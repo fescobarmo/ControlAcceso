@@ -1,0 +1,232 @@
+# ControlAcceso - Sistema de Control de Acceso
+# Cursor Rules para el proyecto
+
+## Información del Proyecto
+
+Este es un sistema de control de acceso full-stack con las siguientes características:
+
+### Stack Tecnológico
+- **Frontend**: React 18 + Material-UI + React Router + Axios
+- **Backend**: Node.js + Express + Sequelize ORM + JWT Auth
+- **Base de Datos**: PostgreSQL (Supabase)
+- **Deployment**: 
+  - Frontend: Vercel
+  - Backend: Render.com
+  - Database: Supabase
+
+### Arquitectura del Proyecto
+
+```
+ControlAcceso/
+├── frontend/                 # React Application
+│   ├── src/
+│   │   ├── components/      # React Components
+│   │   ├── contexts/        # React Contexts (AuthContext)
+│   │   ├── utils/           # Utilities (api.js)
+│   │   └── App.js           # Main App Component
+│   ├── public/              # Static assets
+│   └── package.json         # Frontend dependencies
+├── backend/                 # Node.js API
+│   ├── src/
+│   │   ├── config/          # Database & app configuration
+│   │   ├── controllers/     # Route controllers
+│   │   ├── middleware/      # Express middleware
+│   │   ├── models/          # Sequelize models
+│   │   ├── routes/          # API routes
+│   │   ├── seeds/           # Database seeders
+│   │   └── index.js         # Main server file
+│   └── package.json         # Backend dependencies
+├── database/                # Database schemas and migrations
+│   ├── supabase-schema.sql  # Complete database schema
+│   └── migrations/          # Database migrations
+├── scripts/                 # Deployment and utility scripts
+├── docs/                    # Documentation
+└── docker-compose.yml       # Docker configuration (legacy)
+```
+
+## Reglas de Desarrollo
+
+### Estilo de Código
+- Usar ES6+ features
+- Preferir async/await sobre Promises
+- Usar destructuring cuando sea apropiado
+- Comentarios en español
+- Variables y funciones en inglés, comentarios en español
+
+### Frontend (React)
+- Usar functional components con hooks
+- Usar Material-UI para componentes UI
+- Gestión de estado con Context API (AuthContext)
+- Axios para llamadas HTTP
+- React Router para navegación
+
+### Backend (Node.js/Express)
+- Usar Sequelize ORM para interacciones con DB
+- JWT para autenticación
+- Middleware para validación y seguridad
+- Estructura RESTful para APIs
+- Manejo de errores centralizado
+
+### Base de Datos
+- PostgreSQL con Supabase
+- Usar migraciones para cambios de esquema
+- Relaciones definidas en modelos Sequelize
+- Triggers y funciones en SQL cuando sea necesario
+
+### Deployment
+- Frontend desplegado en Vercel
+- Backend desplegado en Render.com
+- Base de datos en Supabase
+- Variables de entorno para configuración
+
+## Patrones y Convenciones
+
+### Estructura de Archivos
+- Componentes React en PascalCase (UserProfile.js)
+- Archivos de configuración en camelCase (database.js)
+- Rutas API en kebab-case (/api/control-acceso)
+- Modelos Sequelize en PascalCase (User.js)
+
+### Naming Conventions
+- Componentes React: PascalCase
+- Funciones: camelCase
+- Variables: camelCase
+- Constantes: UPPER_SNAKE_CASE
+- Archivos: camelCase o kebab-case según contexto
+
+### API Endpoints
+```
+/api/auth/*          # Autenticación
+/api/users/*         # Gestión de usuarios
+/api/residents/*     # Gestión de residentes
+/api/visitas/*       # Gestión de visitas
+/api/areas/*         # Gestión de áreas
+/api/dispositivos/*  # Gestión de dispositivos
+/api/bitacora/*      # Logs y auditoría
+```
+
+### Modelos de Base de Datos
+- users (usuarios del sistema)
+- roles (roles de usuario)
+- residents (residentes)
+- visitas (registro de visitas)
+- areas (áreas de acceso)
+- dispositivos (dispositivos de control)
+- bitacora (logs de auditoría)
+
+## Variables de Entorno
+
+### Frontend (.env)
+```
+REACT_APP_API_URL=https://backend-url
+REACT_APP_SUPABASE_URL=https://project.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=eyJ...
+```
+
+### Backend (.env)
+```
+NODE_ENV=production
+DB_HOST=db.project.supabase.co
+DB_PORT=5432
+DB_NAME=postgres
+DB_USER=postgres
+DB_PASSWORD=password
+DB_SSL=true
+JWT_SECRET=secret
+SUPABASE_URL=https://project.supabase.co
+SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_KEY=eyJ...
+```
+
+## Comandos Útiles
+
+### Desarrollo Local
+```bash
+# Frontend
+cd frontend && npm start
+
+# Backend
+cd backend && npm run dev
+
+# Base de datos (Docker legacy)
+docker-compose up -d postgres
+```
+
+### Deployment
+```bash
+# Frontend (Vercel)
+cd frontend && vercel --prod
+
+# Backend (Render)
+git push origin main  # Auto-deploy
+
+# Database
+# Ejecutar scripts en Supabase SQL Editor
+```
+
+## Contexto de Negocio
+
+### Funcionalidades Principales
+1. **Autenticación**: Login/logout con JWT
+2. **Gestión de Usuarios**: CRUD de usuarios y roles
+3. **Control de Residentes**: Registro y gestión de residentes
+4. **Registro de Visitas**: Control de entrada/salida de visitantes
+5. **Gestión de Áreas**: Definición de zonas de acceso
+6. **Control de Dispositivos**: Gestión de dispositivos de acceso
+7. **Auditoría**: Logs de todas las acciones del sistema
+
+### Roles del Sistema
+- **Admin**: Acceso completo al sistema
+- **Operador**: Gestión de visitas y residentes
+- **Guardia**: Solo registro de visitas
+- **Residente**: Acceso limitado a sus datos
+
+## Consideraciones de Seguridad
+
+- JWT tokens para autenticación
+- Bcrypt para hash de contraseñas
+- Helmet.js para headers de seguridad
+- CORS configurado correctamente
+- Validación de entrada en todas las rutas
+- Rate limiting implementado
+- Logs de auditoría para acciones críticas
+
+## Deployment Architecture
+
+```
+Internet
+    ↓
+Frontend (Vercel)
+    ↓
+Backend (Render.com)
+    ↓
+Database (Supabase PostgreSQL)
+```
+
+## Notas Importantes
+
+- El proyecto migró de Docker local a arquitectura híbrida cloud
+- Supabase maneja la base de datos con backups automáticos
+- Render.com proporciona servidor Node.js tradicional (no serverless)
+- Vercel optimiza el frontend con CDN global
+- Todos los servicios están en free tier inicialmente
+
+## Debugging
+
+### Logs
+- Frontend: Browser DevTools Console
+- Backend: Render.com Dashboard → Logs
+- Database: Supabase Dashboard → Logs
+
+### Health Checks
+- Frontend: Verificar que carga correctamente
+- Backend: GET /health endpoint
+- Database: Conexión desde backend
+
+## Documentación Adicional
+
+Ver archivos en el proyecto:
+- `GUIA_RENDER.md` - Deployment en Render
+- `GUIA_SUPABASE.md` - Configuración de Supabase
+- `INICIO_RAPIDO_*.md` - Guías de inicio rápido
+- `database/supabase-schema.sql` - Schema completo de DB

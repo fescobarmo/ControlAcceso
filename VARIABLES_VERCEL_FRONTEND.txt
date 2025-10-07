@@ -1,0 +1,41 @@
+# Variables de Entorno para Vercel Frontend
+# Formato correcto para Vercel Dashboard
+
+# =============================================
+# INSTRUCCIONES:
+# =============================================
+# 1. Ve a: https://vercel.com/fescobarmo-gmailcoms-projects/controlacceso-frontend/settings/environment-variables
+# 2. Click "Add New"
+# 3. Para cada variable:
+#    - Key: [nombre de la variable]
+#    - Value: [valor de la variable]
+#    - Environments: Production, Preview, Development (seleccionar todos)
+# 4. Click "Save"
+
+# =============================================
+# FRONTEND VARIABLES (4 TOTAL)
+# =============================================
+
+Key: REACT_APP_API_URL
+Value: https://controlacceso-backend-k7p8qvk6v-fescobarmo-gmailcoms-projects.vercel.app
+Environments: Production, Preview, Development
+
+Key: REACT_APP_BACKEND_URL
+Value: https://controlacceso-backend-k7p8qvk6v-fescobarmo-gmailcoms-projects.vercel.app
+Environments: Production, Preview, Development
+
+Key: REACT_APP_SUPABASE_URL
+Value: https://nwjyxllifotjqzvqhyyc.supabase.co
+Environments: Production, Preview, Development
+
+Key: REACT_APP_SUPABASE_ANON_KEY
+Value: [PEGAR_TU_ANON_KEY_DE_SUPABASE_AQUÍ]
+Environments: Production, Preview, Development
+
+# =============================================
+# NOTAS:
+# =============================================
+# - Solo necesitas cambiar 1 valor: REACT_APP_SUPABASE_ANON_KEY
+# - Obtén el ANON_KEY de: Supabase → Settings → API → anon public
+# - Las URLs del backend ya están actualizadas con el nuevo deployment
+# =============================================

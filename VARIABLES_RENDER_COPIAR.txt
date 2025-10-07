@@ -1,0 +1,88 @@
+==============================================
+VARIABLES DE ENTORNO PARA RENDER.COM
+==============================================
+
+Copia y pega estos valores en Render Dashboard
+Environment Variables section
+
+==============================================
+BASE DE DATOS (SUPABASE)
+==============================================
+
+DB_HOST
+db.nwjyxllifotjqzvqhyyc.supabase.co
+
+DB_PORT
+5432
+
+DB_NAME
+postgres
+
+DB_USER
+postgres
+
+DB_PASSWORD
+[PEGAR TU PASSWORD DE SUPABASE AQUÍ]
+
+DB_SSL
+true
+
+==============================================
+JWT AUTHENTICATION
+==============================================
+
+JWT_SECRET
+xD0HFzPITgKHcB6LCLLmV73HlllvnHWU8kZ0h0oLJFxSdL1x2e+XkICjY0D5Wd7piCmQ6vtGdKcA324q5EgyTQ==
+
+JWT_EXPIRES_IN
+24h
+
+==============================================
+CORS Y FRONTEND
+==============================================
+
+FRONTEND_URL
+https://controlacceso-frontend-mbe5e334a-fescobarmo-gmailcoms-projects.vercel.app
+
+CORS_ORIGIN
+https://controlacceso-frontend-mbe5e334a-fescobarmo-gmailcoms-projects.vercel.app
+
+==============================================
+SUPABASE
+==============================================
+
+SUPABASE_URL
+https://nwjyxllifotjqzvqhyyc.supabase.co
+
+SUPABASE_ANON_KEY
+[PEGAR TU ANON KEY DE SUPABASE AQUÍ]
+
+SUPABASE_SERVICE_KEY
+[PEGAR TU SERVICE KEY DE SUPABASE AQUÍ]
+
+==============================================
+NODE ENVIRONMENT
+==============================================
+
+NODE_ENV
+production
+
+PORT
+3001
+
+==============================================
+NOTAS:
+==============================================
+
+1. Solo necesitas cambiar 3 valores:
+   - DB_PASSWORD (de Supabase)
+   - SUPABASE_ANON_KEY (Settings → API → anon public)
+   - SUPABASE_SERVICE_KEY (Settings → API → service_role)
+
+2. Todo lo demás ya está configurado correctamente
+
+3. JWT_SECRET ya está generado y listo para usar
+
+==============================================
+
+

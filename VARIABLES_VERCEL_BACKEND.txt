@@ -1,0 +1,100 @@
+# Variables de Entorno para Vercel Backend
+# Formato correcto para Vercel Dashboard
+
+# =============================================
+# INSTRUCCIONES:
+# =============================================
+# 1. Ve a: https://vercel.com/fescobarmo-gmailcoms-projects/controlacceso-backend/settings/environment-variables
+# 2. Click "Add New"
+# 3. Para cada variable:
+#    - Key: [nombre de la variable]
+#    - Value: [valor de la variable]
+#    - Environments: Production, Preview, Development (seleccionar todos)
+# 4. Click "Save"
+
+# =============================================
+# BASE DE DATOS (SUPABASE)
+# =============================================
+
+Key: DB_HOST
+Value: db.nwjyxllifotjqzvqhyyc.supabase.co
+Environments: Production, Preview, Development
+
+Key: DB_PORT
+Value: 5432
+Environments: Production, Preview, Development
+
+Key: DB_NAME
+Value: postgres
+Environments: Production, Preview, Development
+
+Key: DB_USER
+Value: postgres
+Environments: Production, Preview, Development
+
+Key: DB_PASSWORD
+Value: [PEGAR_TU_PASSWORD_DE_SUPABASE_AQUÍ]
+Environments: Production, Preview, Development
+
+Key: DB_SSL
+Value: true
+Environments: Production, Preview, Development
+
+# =============================================
+# JWT AUTHENTICATION
+# =============================================
+
+Key: JWT_SECRET
+Value: xD0HFzPITgKHcB6LCLLmV73HlllvnHWU8kZ0h0oLJFxSdL1x2e+XkICjY0D5Wd7piCmQ6vtGdKcA324q5EgyTQ==
+Environments: Production, Preview, Development
+
+Key: JWT_EXPIRES_IN
+Value: 24h
+Environments: Production, Preview, Development
+
+# =============================================
+# CORS Y FRONTEND
+# =============================================
+
+Key: FRONTEND_URL
+Value: https://controlacceso-frontend-7ej4lu2as-fescobarmo-gmailcoms-projects.vercel.app
+Environments: Production, Preview, Development
+
+Key: CORS_ORIGIN
+Value: https://controlacceso-frontend-7ej4lu2as-fescobarmo-gmailcoms-projects.vercel.app,http://localhost:3000
+Environments: Production, Preview, Development
+
+# =============================================
+# SUPABASE
+# =============================================
+
+Key: SUPABASE_URL
+Value: https://nwjyxllifotjqzvqhyyc.supabase.co
+Environments: Production, Preview, Development
+
+Key: SUPABASE_ANON_KEY
+Value: [PEGAR_TU_ANON_KEY_DE_SUPABASE_AQUÍ]
+Environments: Production, Preview, Development
+
+Key: SUPABASE_SERVICE_KEY
+Value: [PEGAR_TU_SERVICE_KEY_DE_SUPABASE_AQUÍ]
+Environments: Production, Preview, Development
+
+# =============================================
+# NODE ENVIRONMENT
+# =============================================
+
+Key: NODE_ENV
+Value: production
+Environments: Production, Preview, Development
+
+# =============================================
+# RESUMEN: 14 VARIABLES TOTAL
+# =============================================
+# Solo necesitas cambiar 3 valores:
+# 1. DB_PASSWORD (de Supabase)
+# 2. SUPABASE_ANON_KEY (Settings → API → anon public)
+# 3. SUPABASE_SERVICE_KEY (Settings → API → service_role)
+#
+# Todo lo demás ya está configurado correctamente.
+# =============================================
